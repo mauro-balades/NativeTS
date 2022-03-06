@@ -4,7 +4,10 @@
   "description": "A modern Typescript transpiler to llvm",
   "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc src/index.ts --outDir dist",
+    "start": "node .",
+    "dev": "npm run build && npm start"
   },
   "repository": {
     "type": "git",
@@ -20,5 +23,8 @@
   "bugs": {
     "url": "https://github.com/mauro-balades/NativeTS/issues"
   },
-  "homepage": "https://github.com/mauro-balades/NativeTS#readme"
+  "homepage": "https://github.com/mauro-balades/NativeTS#readme",
+  "dependencies": {
+    "typescript": "^4.6.2"
+  }
 }
