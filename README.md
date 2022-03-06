@@ -1,2 +1,3 @@
 # NativeTS
-A moder Typescript transpiler to llvm
+
+A modern Typescript transpiler to llvm
