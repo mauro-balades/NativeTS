@@ -22,20 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import argv from "./cli";
 
-function main() {
+import * as argv from "commander";
 
-    let files = argv.args;
-    console.log(files)
+const program = new argv.Command();
 
-}
+program
+    .name("NativeTS")
 
-
-
-try {
-    main();
-} catch(e) {
-    console.error(e)
-}
-
+export default program.parse(process.argv);
