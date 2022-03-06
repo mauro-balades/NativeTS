@@ -1,5 +1,6 @@
 // tslint:disable:no-empty-interface no-namespace interface-name
 
+// @ts-ignore
 declare class Array<T> {
     constructor();
     readonly length: number;
@@ -24,6 +25,7 @@ interface String {
     readonly length: number;
 }
 
+// @ts-ignore
 declare namespace console {
     export function log(message: string): void;
 }

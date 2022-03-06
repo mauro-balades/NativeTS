@@ -47,7 +47,7 @@ function main() {
     console.log(files);
 }
 
-/// OTHER FUNCTIONS ////
+/// OTHER FUNCTIONS ///
 
 function prepare_options() {
     const options: ts.CompilerOptions = {
