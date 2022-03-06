@@ -22,12 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-
 import * as argv from "commander";
 
 const program = new argv.Command();
 
-program
-    .name("NativeTS")
+program.name("NativeTS");
 
 export default program.parse(process.argv);

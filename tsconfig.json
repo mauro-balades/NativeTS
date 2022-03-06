@@ -1,18 +1,15 @@
 {
     "compilerOptions": {
-      "target": "es6",
-      "lib": ["es2016"],
-      "module": "commonjs",
-      "outDir": "build",
-      "strict": true,
-      "noImplicitReturns": true,
-      "noFallthroughCasesInSwitch": true,
-      "forceConsistentCasingInFileNames": true,
-      "pretty": true,
-      "resolveJsonModule": true
+        "target": "es6",
+        "lib": ["es2016"],
+        "module": "commonjs",
+        "outDir": "build",
+        "strict": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "forceConsistentCasingInFileNames": true,
+        "pretty": true,
+        "resolveJsonModule": true
     },
-    "include": [
-      "src/**/*",
-      "test/*"
-    ]
-  }
+    "include": ["src/**/*", "test/*"]
+}

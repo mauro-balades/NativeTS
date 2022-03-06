@@ -22,11 +22,12 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import ts = require("typescript");
+import * as ts from "typescript";
+import * as path from "path";
+
 import argv from "./cli";
 
 function main() {
-
     let files = argv.args;
     const options: ts.CompilerOptions = prepare_options();
 
@@ -34,31 +35,33 @@ function main() {
     const program = ts.createProgram(files, options, host);
     const diagnostics = ts.getPreEmitDiagnostics(program);
 
-    process.stdout.write(ts.formatDiagnosticsWithColorAndContext(diagnostics, host));
-    process.exit(1);
+    if (diagnostics.length > 0) {
+        process.stdout.write(
+            ts.formatDiagnosticsWithColorAndContext(diagnostics, host)
+        );
+        process.exit(1);
+    }
 
+    console.log(program);
 
-    console.log(files)
-
+    console.log(files);
 }
 
 /// OTHER FUNCTIONS ////
 
 function prepare_options() {
     const options: ts.CompilerOptions = {
-        lib: [],
-        types: []
+        lib: [path.join(__dirname, "..", "llvm", ".ts-llvm.d.ts")],
+        types: [],
     };
 
-    return options
+    return options;
 }
 
 /// CALL MAIN FUNCTION ///
 
-
 try {
     main();
-} catch(e) {
-    console.error(e)
+} catch (e) {
+    console.error(e);
 }
-
