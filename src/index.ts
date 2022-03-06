@@ -22,15 +22,38 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+import ts = require("typescript");
 import argv from "./cli";
 
 function main() {
 
     let files = argv.args;
+    const options: ts.CompilerOptions = prepare_options();
+
+    const host = ts.createCompilerHost(options);
+    const program = ts.createProgram(files, options, host);
+    const diagnostics = ts.getPreEmitDiagnostics(program);
+
+    process.stdout.write(ts.formatDiagnosticsWithColorAndContext(diagnostics, host));
+    process.exit(1);
+
+
     console.log(files)
 
 }
 
+/// OTHER FUNCTIONS ////
+
+function prepare_options() {
+    const options: ts.CompilerOptions = {
+        lib: [],
+        types: []
+    };
+
+    return options
+}
+
+/// CALL MAIN FUNCTION ///
 
 
 try {
