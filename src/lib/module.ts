@@ -26,7 +26,49 @@ SOFTWARE.
 import * as ts from "typescript";
 import * as llvm from "llvm-node";
 
-export function createModule(program: ts.Program): llvm.Module {
+class Module {
+
+    program: ts.Program;
+    context!: llvm.LLVMContext;
+    module!: llvm.Module;
+
+    // main function declarations
+    mainFunc!: any;
+    mainRetT!: llvm.IntegerType;
+
+    constructor(program: ts.Program) {
+        this.program = program;
+    }
+
+    /// UTIL FUNCTIONS ///
+    getTypeChecker() {
+        return this.program.getTypeChecker();
+    }
+
+    /// SET FUNCTIONS ///
+
+    setContext(): void {
+        this.context = new llvm.LLVMContext();
+    }
+
+    setModule(name: string = "main"): void {
+        this.module = new llvm.Module(name, this.context);
+    }
+
+    setMainReturnType(name: string = "main"): void {
+        this.mainRetT = llvm.Type.getInt32Ty(this.context)
+    }
+
+    setMainFunction(name: string = "main"): void {
+        this.setMainReturnType();
+        this.mainFunc = undefined;
+    }
+}
+
+
+/// EXPORTS ///
+
+export function createModule(program: ts.Program): void {
 
 
 
