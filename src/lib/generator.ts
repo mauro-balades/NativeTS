@@ -31,11 +31,13 @@ class LLVMGenerator {
     readonly checker: ts.TypeChecker;
     readonly module: llvm.Module;
     readonly context: llvm.LLVMContext;
+    readonly builder: llvm.IRBuilder;
 
     constructor(module: Module) {
         this.checker = module.getTypeChecker();
         this.module = module.getModule();
         this.context = module.getContext();
+        this.builder = new llvm.IRBuilder(this.context);
     }
 }
 
