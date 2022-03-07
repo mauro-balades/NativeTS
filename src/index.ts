@@ -27,6 +27,7 @@ import * as ts from "typescript";
 import * as path from "path";
 
 import argv from "./cli";
+import * as NativeTS from "./lib";
 
 function main() {
     let files = argv.args;
@@ -43,7 +44,7 @@ function main() {
         process.exit(1);
     }
 
-    console.log(program);
+    let module = NativeTS.module.createModule(program);
 
     console.log(files);
 }

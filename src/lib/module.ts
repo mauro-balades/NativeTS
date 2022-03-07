@@ -26,6 +26,8 @@ SOFTWARE.
 import * as ts from "typescript";
 import * as llvm from "llvm-node";
 
+import { newLLVMFunction } from "./utils";
+
 class Module {
 
     program: ts.Program;
@@ -53,15 +55,16 @@ class Module {
 
     setModule(name: string = "main"): void {
         this.module = new llvm.Module(name, this.context);
+        this.setMainFunction();
     }
 
-    setMainReturnType(name: string = "main"): void {
+    setMainReturnType(): void {
         this.mainRetT = llvm.Type.getInt32Ty(this.context)
     }
 
     setMainFunction(name: string = "main"): void {
         this.setMainReturnType();
-        this.mainFunc = undefined;
+        this.mainFunc = newLLVMFunction(this.mainRetT, [], name, this.module);
     }
 }
 
@@ -69,7 +72,11 @@ class Module {
 /// EXPORTS ///
 
 export function createModule(program: ts.Program): void {
+    let module = new Module(program);
 
+    module.setContext();
+    module.setModule();
+    module.setMainFunction();
 
-
+    return module;
 }
