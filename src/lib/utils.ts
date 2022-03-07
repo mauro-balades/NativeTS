@@ -46,5 +46,10 @@ export function isLLVMString(type: llvm.Type) {
 }
 
 export function isValueType(type: llvm.Type) {
-    return type.isDoubleTy() || type.isIntegerTy() || type.isPointerTy() || isLLVMString(type);
+    return (
+        type.isDoubleTy() ||
+        type.isIntegerTy() ||
+        type.isPointerTy() ||
+        isLLVMString(type)
+    );
 }

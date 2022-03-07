@@ -62,8 +62,8 @@ function main() {
     try {
         llvm.verifyModule(mod);
     } catch (error: any) {
-    error.message += "\n" + mod.print();
-    throw error;
+        error.message += "\n" + mod.print();
+        throw error;
     }
 
     console.log(mod.print());
