@@ -24,6 +24,7 @@ SOFTWARE.
 
 import * as ts from "typescript";
 import * as llvm from "llvm-node";
+import * as R from "ramda";
 
 import { Module } from "./module";
 import Enviroment from "./enviroment/enviroment";
@@ -51,7 +52,20 @@ class LLVMGenerator {
     }
 
     emitNode(node: ts.Node, scope: Scope) {
-        console.log(node.kind);
+        switch (node.kind) {
+            case ts.SyntaxKind.Block:
+            case ts.SyntaxKind.ExpressionStatement:
+            case ts.SyntaxKind.IfStatement:
+            case ts.SyntaxKind.WhileStatement:
+            case ts.SyntaxKind.ReturnStatement:
+            case ts.SyntaxKind.VariableStatement:
+              if (scope === this.enviroment.globalScope) {
+
+                // @ts-ignore
+                this.builder.setInsertionPoint(R.last(this.module.getFunction("main").getBasicBlocks())!);
+              }
+              break;
+        }
     }
 }
 
