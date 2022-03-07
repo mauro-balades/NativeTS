@@ -34,7 +34,7 @@ class Module {
     module!: llvm.Module;
 
     // main function declarations
-    mainFunc!: any;
+    mainFunc!: llvm.Function;
     mainRetT!: llvm.IntegerType;
 
     constructor(program: ts.Program) {
@@ -57,6 +57,10 @@ class Module {
     /// SET FUNCTIONS
     setContext(): void {
         this.context = new llvm.LLVMContext();
+    }
+
+    setEntry(): void {
+        llvm.BasicBlock.create(this.context, "entry", this.mainFunc);
     }
 
     setModule(name: string = "main"): void {
@@ -85,6 +89,7 @@ export function createModule(
     module.setContext();
     module.setModule();
     module.setMainFunction(name);
+    module.setEntry();
 
     return module;
 }

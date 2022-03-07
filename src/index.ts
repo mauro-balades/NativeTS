@@ -25,9 +25,11 @@ SOFTWARE.
 
 import * as ts from "typescript";
 import * as path from "path";
+import * as R from "ramda";
 
 import argv from "./cli";
 import * as NativeTS from "./lib";
+import llvm = require("llvm-node");
 
 function main() {
     let files = argv.args;
@@ -46,8 +48,25 @@ function main() {
 
     let module = NativeTS.module.createModule(program);
     let generator = new NativeTS.generator.LLVMGenerator(module);
+    let builder = generator.builder;
 
-    console.log(module);
+    for (const sourceFile of program.getSourceFiles()) {
+        generator.generateFrom(sourceFile);
+    }
+
+    builder.setInsertionPoint(R.last(module.mainFunc.getBasicBlocks())!);
+    builder.createRet(llvm.Constant.getNullValue(module.mainRetT));
+
+    let mod = module.getModule();
+
+    try {
+        llvm.verifyModule(mod);
+    } catch (error: any) {
+    error.message += "\n" + mod.print();
+    throw error;
+    }
+
+    console.log(mod.print());
     console.log(files);
 }
 
