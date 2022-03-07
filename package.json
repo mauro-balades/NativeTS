@@ -27,6 +27,7 @@
     "dependencies": {
         "commander": "^9.0.0",
         "llvm-node": "^3.0.0",
+        "ramda": "^0.28.0",
         "ts-node": "^10.7.0",
         "typescript": "^4.6.2"
     },

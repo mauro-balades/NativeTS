@@ -21,3 +21,50 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+import * as llvm from "llvm-node";
+import ScopeData from "../interfaces/scope_data";
+
+type ScopeValue = llvm.Value | Scope;
+
+export class Scope extends Map<string, ScopeValue> {
+    readonly name: string | undefined;
+    readonly data: ScopeData | undefined;
+
+    constructor(name: string | undefined, data?: ScopeData) {
+        super();
+        this.name = name;
+        this.data = data;
+    }
+
+    getOptional(identifier: string): ScopeValue | undefined {
+        return super.get(identifier);
+    }
+
+    overwrite(identifier: string, value: ScopeValue) {
+        if (this.getOptional(identifier)) {
+            return super.set(identifier, value);
+        }
+
+        throw Error(
+            `Identifier '${identifier}' being overwritten not found in symbol table`
+        );
+    }
+
+    get(identifier: string): ScopeValue {
+        const value = this.getOptional(identifier);
+        if (value) {
+            return value;
+        }
+
+        throw Error(`Unknown identifier '${identifier}'`);
+    }
+
+    set(identifier: string, value: ScopeValue) {
+        if (!this.getOptional(identifier)) {
+            return super.set(identifier, value);
+        }
+
+        throw Error(`Overwriting identifier '${identifier}' in symbol table`);
+    }
+}

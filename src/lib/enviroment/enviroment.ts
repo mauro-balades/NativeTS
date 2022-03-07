@@ -22,10 +22,56 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+import { ScopeValue } from "../types/scope_value";
+import { Scope } from "./scopes";
+
+import * as R from "ramda";
+
 class Enviroment {
+    private readonly scopes: Scope[];
 
     constructor() {
-
+        this.scopes = [new Scope(undefined)];
     }
 
+    withScope(
+        scopeName: string | undefined,
+        body: (scope: Scope) => void
+    ): void {
+        const scope = new Scope(scopeName);
+        this.scopes.push(scope);
+
+        body(scope);
+        this.scopes.pop();
+    }
+
+    /// GET FUNCTIONS ///
+    get globalScope(): Scope {
+        return this.scopes[0]; // First scope is considered as global
+    }
+
+    get currentScope(): Scope {
+        return this.scopes[this.scopes.length - 1];
+    }
+
+    get(identifier: string): ScopeValue {
+        const parts = identifier.split(".");
+
+        if (parts.length > 1) {
+            const scope = this.get(parts[0]);
+            if (!(scope instanceof Scope)) {
+                throw Error(`'${parts[0]}' is not a namespace`);
+            }
+            return scope.get(parts.slice(1).join("."));
+        }
+
+        for (const scope of R.reverse(this.scopes)) {
+            const value = scope.getOptional(identifier);
+            if (value) {
+                return value;
+            }
+        }
+
+        throw Error(`Unknown identifier '${identifier}'`);
+    }
 }
