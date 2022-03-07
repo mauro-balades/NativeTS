@@ -22,5 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-export * as module from './lib/module';
 export * as utils from './lib/utils';
+export * as module from './lib/module';
+export * as generator from './lib/generator';

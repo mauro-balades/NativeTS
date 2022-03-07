@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*
 MIT License
 
@@ -23,49 +22,22 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+import * as llvm from "llvm-node";
 import * as ts from "typescript";
-import * as path from "path";
 
-import argv from "./cli";
-import * as NativeTS from "./lib";
+import { Module } from "./module";
 
-function main() {
-    let files = argv.args;
-    const options: ts.CompilerOptions = prepareOptions();
+class LLVMGenerator {
 
-    const host = ts.createCompilerHost(options);
-    const program = ts.createProgram(files, options, host);
-    const diagnostics = ts.getPreEmitDiagnostics(program);
+    readonly checker: ts.TypeChecker;
+    readonly module: llvm.Module;
+    readonly context: llvm.LLVMContext;
 
-    if (diagnostics.length > 0) {
-        process.stdout.write(
-            ts.formatDiagnosticsWithColorAndContext(diagnostics, host)
-        );
-        process.exit(1);
+    constructor(module: Module) {
+        this.checker = module.getTypeChecker();
+        this.module = module.getModule();
+        this.context = module.getContext();
     }
-
-    let module = NativeTS.module.createModule(program);
-    let generator = new NativeTS.generator.LLVMGenerator(module)
-
-    console.log(module);
-    console.log(files);
 }
 
-/// OTHER FUNCTIONS ///
-
-function prepareOptions() {
-    const options: ts.CompilerOptions = {
-        lib: [path.join(__dirname, "..", "llvm", ".ts-llvm.d.ts")],
-        types: [],
-    };
-
-    return options;
-}
-
-/// CALL MAIN FUNCTION ///
-
-try {
-    main();
-} catch (e) {
-    console.error(e);
-}
+export { LLVMGenerator };

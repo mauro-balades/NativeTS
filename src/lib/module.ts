@@ -30,7 +30,7 @@ import { newLLVMFunction } from "./utils";
 
 class Module {
 
-    program: ts.Program;
+    readonly program: ts.Program;
     context!: llvm.LLVMContext;
     module!: llvm.Module;
 
@@ -42,14 +42,17 @@ class Module {
         this.program = program;
     }
 
-    /// UTIL FUNCTIONS
+    /// GET FUNCTIONS
     getTypeChecker() {
         return this.program.getTypeChecker();
     }
 
-    /// GET FUNCTIONS
     getModule(): llvm.Module {
         return this.module;
+    }
+
+    getContext(): llvm.LLVMContext {
+        return this.context;
     }
 
     /// SET FUNCTIONS
