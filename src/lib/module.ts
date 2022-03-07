@@ -47,6 +47,12 @@ class Module {
         return this.program.getTypeChecker();
     }
 
+    /// GET FUNCTIONS ///
+
+    getModule(): llvm.Module {
+        return this.module;
+    }
+
     /// SET FUNCTIONS ///
 
     setContext(): void {
@@ -71,12 +77,12 @@ class Module {
 
 /// EXPORTS ///
 
-export function createModule(program: ts.Program): void {
+export function createModule(program: ts.Program): llvm.Module {
     let module = new Module(program);
 
     module.setContext();
     module.setModule();
     module.setMainFunction();
 
-    return module;
+    return module.getModule();
 }

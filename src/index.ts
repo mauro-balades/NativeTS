@@ -46,6 +46,7 @@ function main() {
 
     let module = NativeTS.module.createModule(program);
 
+    console.log(module);
     console.log(files);
 }
 
