@@ -29,7 +29,6 @@ import * as llvm from "llvm-node";
 import { newLLVMFunction } from "./utils";
 
 class Module {
-
     readonly program: ts.Program;
     context!: llvm.LLVMContext;
     module!: llvm.Module;
@@ -66,7 +65,7 @@ class Module {
     }
 
     setMainReturnType(): void {
-        this.mainRetT = llvm.Type.getInt32Ty(this.context)
+        this.mainRetT = llvm.Type.getInt32Ty(this.context);
     }
 
     setMainFunction(name: string = "main"): void {
@@ -75,10 +74,12 @@ class Module {
     }
 }
 
-
 /// EXPORTS ///
 
-export function createModule(program: ts.Program, name: string = "main"): Module {
+export function createModule(
+    program: ts.Program,
+    name: string = "main"
+): Module {
     let module = new Module(program);
 
     module.setContext();

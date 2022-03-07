@@ -28,7 +28,6 @@ import * as ts from "typescript";
 import { Module } from "./module";
 
 class LLVMGenerator {
-
     readonly checker: ts.TypeChecker;
     readonly module: llvm.Module;
     readonly context: llvm.LLVMContext;

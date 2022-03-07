@@ -45,7 +45,7 @@ function main() {
     }
 
     let module = NativeTS.module.createModule(program);
-    let generator = new NativeTS.generator.LLVMGenerator(module)
+    let generator = new NativeTS.generator.LLVMGenerator(module);
 
     console.log(module);
     console.log(files);

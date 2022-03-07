@@ -22,12 +22,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import * as llvm from 'llvm-node';
+import * as llvm from "llvm-node";
 
 /// EXPORTS ///
 
-export function newLLVMFunction(retT: llvm.Type, paramT: llvm.Type[], fName: string, module: llvm.Module): llvm.Function {
-
+export function newLLVMFunction(
+    retT: llvm.Type,
+    paramT: llvm.Type[],
+    fName: string,
+    module: llvm.Module
+): llvm.Function {
     // This is the factory function for the FunctionType class.
     // definition:
     //   * https://llvm.org/doxygen/classllvm_1_1FunctionType.html#a7e89b55242c964ae61b7850e99cacef0
