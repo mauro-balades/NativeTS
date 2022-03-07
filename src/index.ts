@@ -29,7 +29,7 @@ import * as R from "ramda";
 
 import argv from "./cli";
 import * as NativeTS from "./lib";
-import llvm = require("llvm-node");
+import * as llvm from "llvm-node";
 
 function main() {
     let files = argv.args;
