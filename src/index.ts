@@ -44,7 +44,8 @@ function main() {
         process.exit(1);
     }
 
-    let module = NativeTS.module.createModule(program);
+    let mod = NativeTS.module.createModule(program);
+    let module = mod.getModule();
 
     console.log(module);
     console.log(files);

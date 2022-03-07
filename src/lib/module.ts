@@ -42,19 +42,17 @@ class Module {
         this.program = program;
     }
 
-    /// UTIL FUNCTIONS ///
+    /// UTIL FUNCTIONS
     getTypeChecker() {
         return this.program.getTypeChecker();
     }
 
-    /// GET FUNCTIONS ///
-
+    /// GET FUNCTIONS
     getModule(): llvm.Module {
         return this.module;
     }
 
-    /// SET FUNCTIONS ///
-
+    /// SET FUNCTIONS
     setContext(): void {
         this.context = new llvm.LLVMContext();
     }
@@ -77,12 +75,14 @@ class Module {
 
 /// EXPORTS ///
 
-export function createModule(program: ts.Program): llvm.Module {
+export function createModule(program: ts.Program, name: string = "main"): Module {
     let module = new Module(program);
 
     module.setContext();
     module.setModule();
-    module.setMainFunction();
+    module.setMainFunction(name);
 
-    return module.getModule();
+    return module;
 }
+
+export { Module };
