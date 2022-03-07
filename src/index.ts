@@ -29,7 +29,7 @@ import argv from "./cli";
 
 function main() {
     let files = argv.args;
-    const options: ts.CompilerOptions = prepare_options();
+    const options: ts.CompilerOptions = prepareOptions();
 
     const host = ts.createCompilerHost(options);
     const program = ts.createProgram(files, options, host);
@@ -49,7 +49,7 @@ function main() {
 
 /// OTHER FUNCTIONS ///
 
-function prepare_options() {
+function prepareOptions() {
     const options: ts.CompilerOptions = {
         lib: [path.join(__dirname, "..", "llvm", ".ts-llvm.d.ts")],
         types: [],
