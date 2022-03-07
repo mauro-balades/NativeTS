@@ -24,45 +24,10 @@ SOFTWARE.
 */
 
 import * as ts from "typescript";
-import * as path from "path";
+import * as llvm from "llvm-node";
 
-import argv from "./cli";
+export function createModule(program: ts.Program): llvm.Module {
 
-function main() {
-    let files = argv.args;
-    const options: ts.CompilerOptions = prepareOptions();
 
-    const host = ts.createCompilerHost(options);
-    const program = ts.createProgram(files, options, host);
-    const diagnostics = ts.getPreEmitDiagnostics(program);
 
-    if (diagnostics.length > 0) {
-        process.stdout.write(
-            ts.formatDiagnosticsWithColorAndContext(diagnostics, host)
-        );
-        process.exit(1);
-    }
-
-    console.log(program);
-
-    console.log(files);
-}
-
-/// OTHER FUNCTIONS ///
-
-function prepareOptions() {
-    const options: ts.CompilerOptions = {
-        lib: [path.join(__dirname, "..", "llvm", ".ts-llvm.d.ts")],
-        types: [],
-    };
-
-    return options;
-}
-
-/// CALL MAIN FUNCTION ///
-
-try {
-    main();
-} catch (e) {
-    console.error(e);
 }
