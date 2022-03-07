@@ -40,3 +40,11 @@ export function newLLVMFunction(
     const linkage = llvm.LinkageTypes.ExternalLinkage;
     return llvm.Function.create(type, linkage, fName, module);
 }
+
+export function isLLVMString(type: llvm.Type) {
+    return type.isStructTy() && type.name === "string";
+}
+
+export function isValueType(type: llvm.Type) {
+    return type.isDoubleTy() || type.isIntegerTy() || type.isPointerTy() || isLLVMString(type);
+}

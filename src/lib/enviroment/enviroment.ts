@@ -75,3 +75,5 @@ class Enviroment {
         throw Error(`Unknown identifier '${identifier}'`);
     }
 }
+
+export default Enviroment;

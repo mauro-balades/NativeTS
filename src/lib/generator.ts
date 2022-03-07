@@ -22,23 +22,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import * as llvm from "llvm-node";
 import * as ts from "typescript";
+import * as llvm from "llvm-node";
 
 import { Module } from "./module";
+import Enviroment from "./enviroment/enviroment";
+import { Scope } from "./enviroment/scopes";
 
 class LLVMGenerator {
     readonly checker: ts.TypeChecker;
     readonly module: llvm.Module;
     readonly context: llvm.LLVMContext;
     readonly builder: llvm.IRBuilder;
+    readonly enviroment: Enviroment;
 
     constructor(module: Module) {
         this.checker = module.getTypeChecker();
         this.module = module.getModule();
         this.context = module.getContext();
         this.builder = new llvm.IRBuilder(this.context);
+        this.enviroment = new Enviroment();
     }
+
+
 }
 
 export { LLVMGenerator };
