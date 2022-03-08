@@ -28,6 +28,7 @@ import * as llvm from "llvm-node";
 import { LLVMGenerator } from "./generator";
 import { Scope } from "./enviroment/scopes";
 import { getBuiltin, isLLVMString, isValueType } from "./utils";
+import { getStringType } from "./types";
 
 class Emitter {
     readonly generator: LLVMGenerator;
@@ -40,6 +41,9 @@ class Emitter {
         switch (node.kind) {
             case ts.SyntaxKind.ExpressionStatement:
                 this.emitExpressionStatement(node as ts.ExpressionStatement);
+                break;
+            case ts.SyntaxKind.InterfaceDeclaration:
+                this.visitInterfaceDeclaration(node as ts.InterfaceDeclaration, scope);
                 break;
             default:
                 console.log(`Warning: Unhandled ts.Node '${ts.SyntaxKind[node.kind]}': ${node.getText()}`);
@@ -154,6 +158,19 @@ class Emitter {
             );
         }
         return value;
+    }
+
+    /// DECLARATIONS ///
+    visitInterfaceDeclaration(
+        declaration: ts.InterfaceDeclaration,
+        parentScope: Scope
+    ) {
+        const name = declaration.name.text;
+        parentScope.set(name, new Scope(name));
+      
+        if (name === "String") {
+          parentScope.set("string", new Scope(name, { declaration, type: getStringType(this.generator.context) }));
+        }
     }
 
     /// EXPRESIONS ///
