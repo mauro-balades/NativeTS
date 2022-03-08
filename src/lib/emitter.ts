@@ -28,10 +28,10 @@ import * as R from "ramda";
 
 import { LLVMGenerator } from "./generator";
 import { Scope } from "./enviroment/scopes";
-import { getBuiltin, isLLVMString, isValueType } from "./utils";
-import { getStringType, getStructType } from "./types";
-import { mangleType } from "./mangle";
-import { addTypeArguments } from "./tsc-utils";
+import { createGCAllocate, getBuiltin, isLLVMString, isValueType, keepInsertionPoint, newLLVMFunction } from "./utils";
+import { getLLVMType, getStringType, getStructType } from "./types";
+import { getDeclarationBaseName, mangleFunctionDeclaration, mangleType } from "./mangle";
+import { addTypeArguments, isMethodReference } from "./tsc-utils";
 
 class Emitter {
     readonly generator: LLVMGenerator;
@@ -41,6 +41,20 @@ class Emitter {
     }
 
     emitNode(node: ts.Node, scope: Scope): void {
+
+        // switch (node.kind) {
+        //     case ts.SyntaxKind.Block:
+        //     case ts.SyntaxKind.ExpressionStatement:
+        //     case ts.SyntaxKind.IfStatement:
+        //     case ts.SyntaxKind.WhileStatement:
+        //     case ts.SyntaxKind.ReturnStatement:
+        //     case ts.SyntaxKind.VariableStatement:
+        //       if (scope === this.generator.enviroment.globalScope) {
+        //         // @ts-ignore
+        //         this.generator.builder.setInsertionPoint(R.last(this.generator.module.getFunction("main").getBasicBlocks())!);
+        //       }
+        //       break;
+        //   }
 
         switch (node.kind) {
             case ts.SyntaxKind.FunctionDeclaration:
@@ -96,6 +110,8 @@ class Emitter {
                 return this.emitLiteralExpression(
                     expression as ts.LiteralExpression
                 );
+            case ts.SyntaxKind.CallExpression:
+                return this.emitCallExpression(expression as ts.CallExpression);
             default:
                 throw Error(
                     `Unhandled ts.Expression '${
@@ -255,6 +271,123 @@ class Emitter {
         parentScope.set(name, scope);
     }
 
+    emitFunctionDeclaration(
+        declaration: ts.FunctionLikeDeclaration,
+        tsThisType: ts.Type | undefined,
+        argumentTypes: ts.Type[]
+      ): llvm.Function | undefined {
+        const preExisting = this.generator.module.getFunction(
+          mangleFunctionDeclaration(declaration, tsThisType, this.generator.checker)
+        );
+        if (preExisting) {
+          return preExisting;
+        }
+      
+        let parentScope = undefined;
+        if (tsThisType) {
+            parentScope = this.generator.enviroment.get(mangleType(tsThisType, this.generator.checker)) as Scope;
+        }
+
+        const { parent } = declaration;
+
+        if (ts.isSourceFile(parent)) {
+            parentScope = this.generator.enviroment.globalScope;
+        } else if (ts.isModuleBlock(parent)) {
+            parentScope = this.generator.enviroment.get(parent.parent.name.text) as Scope;
+        } else {
+            throw Error(`Unhandled function declaration parent kind '${ts.SyntaxKind[parent.kind]}'`);
+        }
+
+        const isConstructor = ts.isConstructorDeclaration(declaration);
+        const hasThisParameter =
+          ts.isMethodDeclaration(declaration) ||
+          ts.isMethodSignature(declaration) ||
+          ts.isIndexSignatureDeclaration(declaration) ||
+          ts.isPropertyDeclaration(declaration);
+        const thisType = tsThisType
+          ? (this.generator.enviroment.get(mangleType(tsThisType, this.generator.checker)) as Scope).data!.type
+          : undefined;
+        let thisValue: llvm.Value;
+      
+        let tsReturnType: ts.Type;
+        if (ts.isIndexSignatureDeclaration(declaration) && tsThisType) {
+          tsReturnType = this.generator.checker.getIndexTypeOfType(tsThisType, ts.IndexKind.Number)!;
+        } else {
+          if (ts.isPropertyDeclaration(declaration)) {
+
+            // @ts-ignore
+            tsReturnType = this.generator.checker.getTypeFromTypeNode(declaration.type!);
+          } else {
+            const signature = this.generator.checker.getSignatureFromDeclaration(declaration)!;
+            tsReturnType = signature.getReturnType();
+          }
+        }
+      
+        let returnType = isConstructor ? thisType!.getPointerTo() : getLLVMType(tsReturnType, this.generator);
+        if (ts.isIndexSignatureDeclaration(declaration)) {
+          returnType = returnType.getPointerTo();
+        }
+        const parameterTypes = argumentTypes.map(argumentType => getLLVMType(argumentType, this.generator));
+        if (hasThisParameter) {
+          parameterTypes.unshift(isValueType(thisType!) ? thisType! : thisType!.getPointerTo());
+        }
+        const qualifiedName = mangleFunctionDeclaration(declaration, tsThisType, this.generator.checker);
+        const func = newLLVMFunction(returnType, parameterTypes, qualifiedName, this.generator.module);
+        const body =
+          ts.isMethodSignature(declaration) ||
+          ts.isIndexSignatureDeclaration(declaration) ||
+          ts.isPropertyDeclaration(declaration)
+            ? undefined
+            : declaration.body;
+      
+        if (body) {
+            this.generator.enviroment.withScope(qualifiedName, (bodyScope: Scope) => {
+            const parameterNames = ts.isPropertyDeclaration(declaration)
+              ? []
+              : this.generator.checker.getSignatureFromDeclaration(declaration)!.parameters.map((parameter: any) => parameter.name);
+      
+            if (hasThisParameter) {
+              parameterNames.unshift("this");
+            }
+            for (const [parameterName, argument] of R.zip(parameterNames, func.getArguments())) {
+
+                // @ts-ignore
+                argument.name = parameterName;
+
+                // @ts-ignore
+                bodyScope.set(parameterName, argument);
+            }
+      
+            const entryBlock = llvm.BasicBlock.create(this.generator.context, "entry", func);
+            this.generator.builder.setInsertionPoint(entryBlock);
+      
+            if (isConstructor) {
+              thisValue = createGCAllocate(thisType!, this.generator);
+              bodyScope.set("this", thisValue);
+            }
+
+            body.forEachChild((node: any) => this.emitNode(node, bodyScope));
+
+            // @ts-ignore
+            if (!this.generator.builder.getInsertBlock().getTerminator()) {
+              if (returnType.isVoidTy()) {
+                this.generator.builder.createRetVoid();
+              } else if (isConstructor) {
+                this.generator.builder.createRet(thisValue);
+              } else {
+                // TODO: Emit LLVM 'unreachable' instruction.
+              }
+            }
+          });
+        }
+      
+        llvm.verifyFunction(func);
+        const name = getDeclarationBaseName(declaration);
+        parentScope.set(name, func);
+        return func;
+      }
+
+
     /// EXPRESIONS ///
 
     emitPrefixUnaryExpression(
@@ -310,6 +443,52 @@ class Emitter {
                     }'`
                 );
         }
+    }
+
+    /// EXPRESIONS ///
+    emitCallExpression(expression: ts.CallExpression): llvm.Value {
+        const isMethod = isMethodReference(expression.expression, this.generator.checker);
+        const declaration = this.generator.checker.getSymbolAtLocation(expression.expression)!.valueDeclaration;
+        let thisType: ts.Type | undefined;
+        if (isMethod) {
+          const methodReference = expression.expression as ts.PropertyAccessExpression;
+          thisType = this.generator.checker.getTypeAtLocation(methodReference.expression);
+        }
+      
+        const argumentTypes = expression.arguments.map(this.generator.checker.getTypeAtLocation);
+        const callee = this.getOrEmitFunctionForCall(declaration as ts.FunctionLikeDeclaration, thisType, argumentTypes);
+      
+        const args = expression.arguments.map(argument => this.emitExpression(argument));
+      
+        if (isMethod) {
+          const propertyAccess = expression.expression as ts.PropertyAccessExpression;
+          args.unshift(this.emitExpression(propertyAccess.expression));
+        }
+      
+        return this.generator.builder.createCall(callee, args);
+    }
+
+    getOrEmitFunctionForCall(
+        declaration: ts.Declaration,
+        thisType: ts.Type | undefined,
+        argumentTypes: ts.Type[]
+      ) {
+        if (
+          !ts.isFunctionDeclaration(declaration) &&
+          !ts.isMethodDeclaration(declaration) &&
+          !ts.isMethodSignature(declaration) &&
+          !ts.isIndexSignatureDeclaration(declaration) &&
+          !ts.isPropertyDeclaration(declaration) &&
+          !ts.isConstructorDeclaration(declaration)
+        ) {
+          throw Error(
+            `Invalid function call target '${getDeclarationBaseName(declaration)}' (${ts.SyntaxKind[declaration.kind]})`
+          );
+        }
+
+        return keepInsertionPoint(this.generator.builder, () => {
+          return this.emitFunctionDeclaration(declaration as ts.FunctionLikeDeclaration, thisType, argumentTypes)!;
+        });
     }
 }
 
