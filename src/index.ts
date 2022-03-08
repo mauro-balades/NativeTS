@@ -46,6 +46,12 @@ function main() {
         process.exit(1);
     }
 
+    llvm.initializeAllTargetInfos();
+    llvm.initializeAllTargets();
+    llvm.initializeAllTargetMCs();
+    llvm.initializeAllAsmParsers();
+    llvm.initializeAllAsmPrinters();
+
     let module = NativeTS.module.createModule(program);
     let generator = new NativeTS.generator.LLVMGenerator(module);
     let builder = generator.builder;

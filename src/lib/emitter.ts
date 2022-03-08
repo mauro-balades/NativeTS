@@ -40,6 +40,9 @@ class Emitter {
         switch (node.kind) {
             case ts.SyntaxKind.ExpressionStatement:
                 this.emitExpressionStatement(node as ts.ExpressionStatement);
+                break;
+            default:
+                console.log(`Warning: Unhandled ts.Node '${ts.SyntaxKind[node.kind]}': ${node.getText()}`);
         }
     }
 
@@ -62,7 +65,7 @@ class Emitter {
             case ts.SyntaxKind.FirstLiteralToken:
                 return this.emitLiteralExpression(
                     expression as ts.LiteralExpression
-                )
+                );
             default:
                 throw Error(
                     `Unhandled ts.Expression '${
