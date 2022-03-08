@@ -49,7 +49,7 @@ class LLVMGenerator {
     generateFrom(files: ts.SourceFile) {
         files.forEachChild((node: ts.Node) => {
             this.emitter.emitNode(node, this.enviroment.globalScope);
-        })
+        });
     }
 }
 
