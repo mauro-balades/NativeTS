@@ -45,6 +45,8 @@ class Emitter {
             case ts.SyntaxKind.InterfaceDeclaration:
                 this.visitInterfaceDeclaration(node as ts.InterfaceDeclaration, scope);
                 break;
+            case ts.SyntaxKind.EndOfFileToken:
+                break;
             default:
                 console.log(`Warning: Unhandled ts.Node '${ts.SyntaxKind[node.kind]}': ${node.getText()}`);
         }
