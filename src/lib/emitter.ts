@@ -175,7 +175,7 @@ class Emitter {
 
         if (isLLVMString(left.type) && isLLVMString(right.type)) {
           const concat = getBuiltin("string__concat", this.generator.context, this.generator.module);
-          return this.generator.builder.createCall(concat, [left, right]);
+          return this.generator.builder.createCall(concat.callee, [left, right]);
         }
       
         throw Error("Invalid operand types to binary plus");
