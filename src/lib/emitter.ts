@@ -28,7 +28,9 @@ import * as llvm from "llvm-node";
 import { LLVMGenerator } from "./generator";
 import { Scope } from "./enviroment/scopes";
 import { getBuiltin, isLLVMString, isValueType } from "./utils";
-import { getStringType } from "./types";
+import { getStringType, getStructType } from "./types";
+import { mangleType } from "./mangle";
+import { addTypeArguments } from "./tsc-utils";
 
 class Emitter {
     readonly generator: LLVMGenerator;
@@ -43,12 +45,25 @@ class Emitter {
                 this.emitExpressionStatement(node as ts.ExpressionStatement);
                 break;
             case ts.SyntaxKind.InterfaceDeclaration:
-                this.visitInterfaceDeclaration(node as ts.InterfaceDeclaration, scope);
+                this.visitInterfaceDeclaration(
+                    node as ts.InterfaceDeclaration,
+                    scope
+                );
+                break;
+            case ts.SyntaxKind.ClassDeclaration:
+                this.emitClassDeclaration(node as ts.ClassDeclaration, [], scope);
+                break;
+            case ts.SyntaxKind.ModuleDeclaration:
+                this.emitModuleDeclaration(node as ts.ModuleDeclaration, scope);
                 break;
             case ts.SyntaxKind.EndOfFileToken:
                 break;
             default:
-                console.log(`Warning: Unhandled ts.Node '${ts.SyntaxKind[node.kind]}': ${node.getText()}`);
+                console.log(
+                    `Warning: Unhandled ts.Node '${
+                        ts.SyntaxKind[node.kind]
+                    }': ${node.getText()}`
+                );
         }
     }
 
@@ -86,7 +101,7 @@ class Emitter {
 
         switch (expression.operatorToken.kind) {
             case ts.SyntaxKind.EqualsToken:
-                throw Error("TODO: equal token")
+                throw Error("TODO: equal token");
             case ts.SyntaxKind.EqualsEqualsEqualsToken:
                 return this.generator.builder.createFCmpOEQ(
                     this.emitExpression(left),
@@ -118,7 +133,10 @@ class Emitter {
                     this.emitExpression(right)
                 );
             case ts.SyntaxKind.PlusToken:
-                return this.emitBinaryPlus(this.emitExpression(left), this.emitExpression(right));
+                return this.emitBinaryPlus(
+                    this.emitExpression(left),
+                    this.emitExpression(right)
+                );
             case ts.SyntaxKind.MinusToken:
                 return this.generator.builder.createFSub(
                     this.emitExpression(left),
@@ -169,10 +187,63 @@ class Emitter {
     ) {
         const name = declaration.name.text;
         parentScope.set(name, new Scope(name));
-      
+
         if (name === "String") {
-          parentScope.set("string", new Scope(name, { declaration, type: getStringType(this.generator.context) }));
+            parentScope.set(
+                "string",
+                new Scope(name, {
+                    declaration,
+                    type: getStringType(this.generator.context),
+                })
+            );
         }
+    }
+
+    emitClassDeclaration(
+        declaration: ts.ClassDeclaration,
+        typeArguments: ReadonlyArray<ts.Type>,
+        parentScope: Scope
+    ): void {
+        if (declaration.typeParameters && typeArguments.length === 0) {
+            return;
+        }
+
+        const thisType = addTypeArguments(
+            this.generator.checker.getTypeAtLocation(declaration),
+            typeArguments
+        );
+
+        const preExisting = this.generator.module.getTypeByName(
+            mangleType(thisType, this.generator.checker)
+        );
+        if (preExisting) {
+            return;
+        }
+
+        const isOpaque = !!(
+            ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.Ambient
+        );
+        const name = mangleType(thisType, this.generator.checker);
+        const type = getStructType(thisType, isOpaque, this.generator);
+        const scope = new Scope(name, { declaration, type });
+        parentScope.set(name, scope);
+        for (const method of declaration.members.filter(
+            (member) => !ts.isPropertyDeclaration(member)
+        )) {
+            this.emitNode(method, scope);
+        }
+    }
+
+    emitModuleDeclaration(
+        declaration: ts.ModuleDeclaration,
+        parentScope: Scope
+    ): void {
+        const name = declaration.name.text;
+        const scope = new Scope(name);
+        declaration.body!.forEachChild((node) =>
+            this.emitNode(node, scope)
+        );
+        parentScope.set(name, scope);
     }
 
     /// EXPRESIONS ///
@@ -197,21 +268,31 @@ class Emitter {
 
     emitBinaryPlus(left: llvm.Value, right: llvm.Value): llvm.Value {
         if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-          return this.generator.builder.createFAdd(left, right);
+            return this.generator.builder.createFAdd(left, right);
         }
 
         if (isLLVMString(left.type) && isLLVMString(right.type)) {
-          const concat = getBuiltin("string__concat", this.generator.context, this.generator.module);
-          return this.generator.builder.createCall(concat.callee, [left, right]);
+            const concat = getBuiltin(
+                "string__concat",
+                this.generator.context,
+                this.generator.module
+            );
+            return this.generator.builder.createCall(concat.callee, [
+                left,
+                right,
+            ]);
         }
-      
+
         throw Error("Invalid operand types to binary plus");
     }
 
     emitLiteralExpression(expression: ts.LiteralExpression): llvm.Value {
         switch (expression.kind) {
             case ts.SyntaxKind.NumericLiteral:
-                return llvm.ConstantFP.get(this.generator.context, parseFloat(expression.text));
+                return llvm.ConstantFP.get(
+                    this.generator.context,
+                    parseFloat(expression.text)
+                );
 
             default:
                 throw Error(

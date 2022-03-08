@@ -23,6 +23,8 @@ SOFTWARE.
 */
 
 import * as llvm from "llvm-node";
+import * as ts from "typescript";
+import { isProperty } from "./tsc-utils";
 import { getStringType } from "./types";
 import { BuiltinName } from "./types/builtin_name";
 
@@ -56,15 +58,34 @@ export function isValueType(type: llvm.Type) {
     );
 }
 
+export function getStoredProperties(type: ts.Type, checker: ts.TypeChecker) {
+    return checker.getPropertiesOfType(type).filter(isProperty);
+}
+
 function getBuiltinFunctionType(name: BuiltinName, context: llvm.LLVMContext) {
     switch (name) {
-      case "gc__allocate":
-        return llvm.FunctionType.get(llvm.Type.getInt8PtrTy(context), [llvm.Type.getInt32Ty(context)], false);
-      case "string__concat":
-        return llvm.FunctionType.get(getStringType(context), [getStringType(context), getStringType(context)], false);
+        case "gc__allocate":
+            return llvm.FunctionType.get(
+                llvm.Type.getInt8PtrTy(context),
+                [llvm.Type.getInt32Ty(context)],
+                false
+            );
+        case "string__concat":
+            return llvm.FunctionType.get(
+                getStringType(context),
+                [getStringType(context), getStringType(context)],
+                false
+            );
     }
 }
 
-export function getBuiltin(name: BuiltinName, context: llvm.LLVMContext, module: llvm.Module) {
-    return module.getOrInsertFunction(name, getBuiltinFunctionType(name, context));
+export function getBuiltin(
+    name: BuiltinName,
+    context: llvm.LLVMContext,
+    module: llvm.Module
+) {
+    return module.getOrInsertFunction(
+        name,
+        getBuiltinFunctionType(name, context)
+    );
 }

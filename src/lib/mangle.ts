@@ -22,4 +22,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-export type BuiltinName = "gc__allocate" | "string__concat";
+import * as ts from "typescript";
+import { getTypeArguments, getTypeBaseName } from "./tsc-utils";
+
+export function mangleType(type: ts.Type, checker: ts.TypeChecker): string {
+    const typeArguments = getTypeArguments(type).map((typeArgument: ts.Type) => mangleType(typeArgument, checker));
+    return [getTypeBaseName(type, checker), ...typeArguments].join("__");
+}
