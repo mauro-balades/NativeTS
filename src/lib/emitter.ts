@@ -59,6 +59,10 @@ class Emitter {
                 return this.emitBinaryExpression(
                     expression as ts.BinaryExpression
                 );
+            case ts.SyntaxKind.FirstLiteralToken:
+                return this.emitLiteralExpression(
+                    expression as ts.LiteralExpression
+                )
             default:
                 throw Error(
                     `Unhandled ts.Expression '${
@@ -67,6 +71,7 @@ class Emitter {
                 );
         }
     }
+
     emitBinaryExpression(expression: ts.BinaryExpression): llvm.Value {
         const { left, right } = expression;
 
@@ -179,6 +184,20 @@ class Emitter {
         }
       
         throw Error("Invalid operand types to binary plus");
+    }
+
+    emitLiteralExpression(expression: ts.LiteralExpression): llvm.Value {
+        switch (expression.kind) {
+            case ts.SyntaxKind.NumericLiteral:
+                return llvm.ConstantFP.get(this.generator.context, parseFloat(expression.text));
+
+            default:
+                throw Error(
+                    `Unhandled ts.LiteralExpression literal value '${
+                        ts.SyntaxKind[expression.kind]
+                    }'`
+                );
+        }
     }
 }
 
