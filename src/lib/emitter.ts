@@ -107,6 +107,7 @@ class Emitter {
                     expression as ts.BinaryExpression
                 );
             case ts.SyntaxKind.FirstLiteralToken:
+            case ts.SyntaxKind.StringLiteral:
                 return this.emitLiteralExpression(
                     expression as ts.LiteralExpression
                 );
@@ -435,6 +436,11 @@ class Emitter {
                     this.generator.context,
                     parseFloat(expression.text)
                 );
+            case ts.SyntaxKind.StringLiteral: {
+                const ptr = this.generator.builder.createGlobalStringPtr(expression.text) as llvm.Constant;
+                const length = llvm.ConstantInt.get(this.generator.context, expression.text.length);
+                return llvm.ConstantStruct.get(getStringType(this.generator.context), [ptr, length]);
+            }
 
             default:
                 throw Error(
