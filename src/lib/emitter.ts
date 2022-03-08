@@ -25,32 +25,20 @@ SOFTWARE.
 import * as ts from "typescript";
 import * as llvm from "llvm-node";
 
-import { Module } from "./module";
-import Enviroment from "./enviroment/enviroment";
-import Emitter from "./emitter";
+import { LLVMGenerator } from "./generator";
+import { Scope } from "./enviroment/scopes";
 
-class LLVMGenerator {
-    readonly checker: ts.TypeChecker;
-    readonly module: llvm.Module;
-    readonly context: llvm.LLVMContext;
-    readonly builder: llvm.IRBuilder;
-    readonly enviroment: Enviroment;
-    readonly emitter: Emitter;
+class Emitter {
 
-    constructor(module: Module) {
-        this.checker = module.getTypeChecker();
-        this.module = module.getModule();
-        this.context = module.getContext();
-        this.builder = new llvm.IRBuilder(this.context);
-        this.enviroment = new Enviroment();
-        this.emitter = new Emitter(this);
+    readonly generator: LLVMGenerator;
+
+    constructor(generator: LLVMGenerator) {
+        this.generator = generator;
     }
 
-    generateFrom(files: ts.SourceFile) {
-        files.forEachChild((node: ts.Node) => {
-            this.emitter.emitNode(node, this.enviroment.globalScope);
-        })
+    emitNode(node: ts.Node, scope: Scope) {
+
     }
 }
 
-export { LLVMGenerator };
+export default Emitter;
