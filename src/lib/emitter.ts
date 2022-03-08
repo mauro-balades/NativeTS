@@ -24,6 +24,7 @@ SOFTWARE.
 
 import * as ts from "typescript";
 import * as llvm from "llvm-node";
+import * as R from "ramda";
 
 import { LLVMGenerator } from "./generator";
 import { Scope } from "./enviroment/scopes";
@@ -40,7 +41,15 @@ class Emitter {
     }
 
     emitNode(node: ts.Node, scope: Scope): void {
+
         switch (node.kind) {
+            case ts.SyntaxKind.FunctionDeclaration:
+            case ts.SyntaxKind.MethodDeclaration:
+            case ts.SyntaxKind.IndexSignature:
+            case ts.SyntaxKind.Constructor:
+                // Emitted when called.
+                break;
+
             case ts.SyntaxKind.ExpressionStatement:
                 this.emitExpressionStatement(node as ts.ExpressionStatement);
                 break;
