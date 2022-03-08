@@ -27,7 +27,7 @@ import * as llvm from "llvm-node";
 
 import { LLVMGenerator } from "./generator";
 import { Scope } from "./enviroment/scopes";
-import { isValueType } from "./utils";
+import { getBuiltin, isLLVMString, isValueType } from "./utils";
 
 class Emitter {
     readonly generator: LLVMGenerator;
@@ -55,11 +55,80 @@ class Emitter {
                 return this.emitPrefixUnaryExpression(
                     expression as ts.PrefixUnaryExpression
                 );
-            // case ts.SyntaxKind.BinaryExpression:
+            case ts.SyntaxKind.BinaryExpression:
+                return this.emitBinaryExpression(
+                    expression as ts.BinaryExpression
+                );
             default:
                 throw Error(
                     `Unhandled ts.Expression '${
                         ts.SyntaxKind[expression.kind]
+                    }'`
+                );
+        }
+    }
+    emitBinaryExpression(expression: ts.BinaryExpression): llvm.Value {
+        const { left, right } = expression;
+
+        switch (expression.operatorToken.kind) {
+            case ts.SyntaxKind.EqualsToken:
+                throw Error("TODO: equal token")
+            case ts.SyntaxKind.EqualsEqualsEqualsToken:
+                return this.generator.builder.createFCmpOEQ(
+                    this.emitExpression(left),
+                    this.emitExpression(right)
+                );
+            case ts.SyntaxKind.ExclamationEqualsEqualsToken:
+                return this.generator.builder.createFCmpONE(
+                    this.emitExpression(left),
+                    this.emitExpression(right)
+                );
+            case ts.SyntaxKind.LessThanToken:
+                return this.generator.builder.createFCmpOLT(
+                    this.emitExpression(left),
+                    this.emitExpression(right)
+                );
+            case ts.SyntaxKind.GreaterThanToken:
+                return this.generator.builder.createFCmpOGT(
+                    this.emitExpression(left),
+                    this.emitExpression(right)
+                );
+            case ts.SyntaxKind.LessThanEqualsToken:
+                return this.generator.builder.createFCmpOLE(
+                    this.emitExpression(left),
+                    this.emitExpression(right)
+                );
+            case ts.SyntaxKind.GreaterThanEqualsToken:
+                return this.generator.builder.createFCmpOGE(
+                    this.emitExpression(left),
+                    this.emitExpression(right)
+                );
+            case ts.SyntaxKind.PlusToken:
+                return this.emitBinaryPlus(this.emitExpression(left), this.emitExpression(right));
+            case ts.SyntaxKind.MinusToken:
+                return this.generator.builder.createFSub(
+                    this.emitExpression(left),
+                    this.emitExpression(right)
+                );
+            case ts.SyntaxKind.AsteriskToken:
+                return this.generator.builder.createFMul(
+                    this.emitExpression(left),
+                    this.emitExpression(right)
+                );
+            case ts.SyntaxKind.SlashToken:
+                return this.generator.builder.createFDiv(
+                    this.emitExpression(left),
+                    this.emitExpression(right)
+                );
+            case ts.SyntaxKind.PercentToken:
+                return this.generator.builder.createFRem(
+                    this.emitExpression(left),
+                    this.emitExpression(right)
+                );
+            default:
+                throw Error(
+                    `Unhandled ts.BinaryExpression operator '${
+                        ts.SyntaxKind[expression.operatorToken.kind]
                     }'`
                 );
         }
@@ -97,6 +166,19 @@ class Emitter {
                     }'`
                 );
         }
+    }
+
+    emitBinaryPlus(left: llvm.Value, right: llvm.Value): llvm.Value {
+        if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
+          return this.generator.builder.createFAdd(left, right);
+        }
+
+        if (isLLVMString(left.type) && isLLVMString(right.type)) {
+          const concat = getBuiltin("string__concat", this.generator.context, this.generator.module);
+          return this.generator.builder.createCall(concat, [left, right]);
+        }
+      
+        throw Error("Invalid operand types to binary plus");
     }
 }
 
