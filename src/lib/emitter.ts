@@ -432,13 +432,15 @@ class Emitter {
     emitLiteralExpression(expression: ts.LiteralExpression): llvm.Value {
         switch (expression.kind) {
             case ts.SyntaxKind.NumericLiteral:
+                let expr = expression as ts.NumericLiteral;
                 return llvm.ConstantFP.get(
                     this.generator.context,
-                    parseFloat(expression.text)
+                    parseFloat(expr.text)
                 );
             case ts.SyntaxKind.StringLiteral: {
-                const ptr = this.generator.builder.createGlobalStringPtr(expression.text) as llvm.Constant;
-                const length = llvm.ConstantInt.get(this.generator.context, expression.text.length);
+                let expr = expression as ts.StringLiteral;
+                const ptr = this.generator.builder.createGlobalStringPtr(expr.text) as llvm.Constant;
+                const length = llvm.ConstantInt.get(this.generator.context, expr.text.length);
                 return llvm.ConstantStruct.get(getStringType(this.generator.context), [ptr, length]);
             }
 
