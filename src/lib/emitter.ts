@@ -42,7 +42,7 @@ import {
     mangleFunctionDeclaration,
     mangleType,
 } from "./mangle";
-import { addTypeArguments, isMethodReference } from "./tsc-utils";
+import { addTypeArguments, isMethodReference, isVarConst } from "./tsc-utils";
 
 class Emitter {
     readonly generator: LLVMGenerator;
@@ -105,6 +105,9 @@ class Emitter {
             case ts.SyntaxKind.ModuleDeclaration:
                 this.emitModuleDeclaration(node as ts.ModuleDeclaration, scope);
                 break;
+            case ts.SyntaxKind.VariableStatement:
+                this.emitVariableStatement(node as ts.VariableStatement, scope)
+                break;
             case ts.SyntaxKind.EndOfFileToken:
                 break;
             default:
@@ -141,6 +144,12 @@ class Emitter {
                 return this.emitNewExpression(expression as ts.NewExpression);
             case ts.SyntaxKind.CallExpression:
                 return this.emitCallExpression(expression as ts.CallExpression);
+
+            case ts.SyntaxKind.Identifier:
+                let expr = expression as ts.Identifier;
+                return this.generator.enviroment.get(expr.text) as llvm.Value;
+            case ts.SyntaxKind.ThisKeyword:
+                return this.generator.enviroment.get("this") as llvm.Value;
             default:
                 throw Error(
                     `Unhandled ts.Expression '${
@@ -225,7 +234,7 @@ class Emitter {
     }
 
     convertToRvalue(value: llvm.Value) {
-        if (value.type.isPointerTy() && isValueType(value.type.elementType)) {
+        if (value.type?.isPointerTy() && isValueType(value.type.elementType)) {
             return this.generator.builder.createLoad(
                 value,
                 value.name + ".load"
@@ -552,7 +561,6 @@ class Emitter {
             case ts.SyntaxKind.StringLiteral: {
 
                 let expr = expression as ts.StringLiteral;
-                console.log(this.generator.builder.getInsertBlock())
                 const ptr = this.generator.builder.createGlobalStringPtr(expr.text) as llvm.Constant;
                 const length = llvm.ConstantInt.get(this.generator.context, expr.text.length);
                 return llvm.ConstantStruct.get(getStringType(this.generator.context), [ptr, length]);
@@ -642,6 +650,34 @@ class Emitter {
             this.emitNode(statement, scope);
           }
         });
+    }
+
+    emitVariableStatement(
+        statement: ts.VariableStatement,
+        parentScope: Scope
+      ): void {
+        for (const declaration of statement.declarationList.declarations) {
+          // TODO: Handle destructuring declarations.
+          const name = declaration.name.getText();
+          const initializer = this.emitExpression(declaration.initializer!);
+      
+          if (isVarConst(declaration)) {
+            if (!(initializer instanceof llvm.Argument)) {
+              initializer.name = name;
+            }
+            parentScope.set(name, initializer);
+          } else {
+            const type = this.generator.checker.getTypeAtLocation(declaration);
+
+            // @ts-ignore
+            const builder = new llvm.IRBuilder(this.generator.builder.getInsertBlock().parent!.getEntryBlock()!);
+            const arraySize = undefined;
+            const alloca = this.generator.builder.createAlloca(getLLVMType(type, this.generator), arraySize, name);
+
+            this.generator.builder.createStore(initializer, alloca);
+            parentScope.set(name, alloca);
+          }
+        }
     }
 }
 

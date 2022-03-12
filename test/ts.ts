@@ -1,14 +1,9 @@
-class hello {
-    name: String;
 
-    constructor() {
-        this.name = "mauro"
-    }
+class Hello {
+    public static d: String = "hello";
 }
 
-function fn(name: String) {
-
-}
+console.log(Hello.d)
 
 
-fn(new hello().name)
+const lol = "a";

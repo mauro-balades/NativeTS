@@ -27,5 +27,6 @@ interface String {
 
 // @ts-ignore
 declare namespace console {
+    export function log(message: String): void;
     export function log(message: string): void;
 }

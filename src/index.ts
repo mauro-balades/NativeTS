@@ -78,7 +78,7 @@ function main() {
     }
 
     console.log(mod.print());
-    console.log(files);
+    // llvm.writeBitcodeToFile(mod, "test/compiled.bc")
 }
 
 /// OTHER FUNCTIONS ///
