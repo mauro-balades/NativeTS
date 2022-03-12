@@ -92,9 +92,12 @@ export function createGCAllocate(type: llvm.Type, generator: LLVMGenerator) {
         generator.context,
         generator.module
     );
-    const returnValue = generator.builder.createCall(allocate.callee, [
+
+    const functionType = allocate.functionType;
+    const returnValue = generator.builder.createCall(functionType, allocate.callee, [
         llvm.ConstantInt.get(generator.context, size, 32),
     ]);
+    
     return generator.builder.createBitCast(returnValue, type.getPointerTo());
 }
 

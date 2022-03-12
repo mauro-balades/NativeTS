@@ -1,1 +1,3 @@
-"1 + 1 = ";
+function lol(hello: String) {
+
+}
