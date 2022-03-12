@@ -1,7 +1,14 @@
 class hello {
+    name: String;
+
     constructor() {
-        
+        this.name = "mauro"
     }
 }
 
-new hello()
+function fn(name: String) {
+
+}
+
+
+fn(new hello().name)

@@ -99,6 +99,9 @@ class Emitter {
                     scope
                 );
                 break;
+            case ts.SyntaxKind.Block:
+                this.emitBlock(node as ts.Block);
+                break;
             case ts.SyntaxKind.ModuleDeclaration:
                 this.emitModuleDeclaration(node as ts.ModuleDeclaration, scope);
                 break;
@@ -258,7 +261,6 @@ class Emitter {
         if (declaration.typeParameters && typeArguments.length === 0) {
             return;
         }
-        console.log(declaration)
 
         const thisType = addTypeArguments(
             this.generator.checker.getTypeAtLocation(declaration),
@@ -510,7 +512,7 @@ class Emitter {
       
         const argumentTypes = expression.arguments!.map(this.generator.checker.getTypeAtLocation);
         const thisType = this.generator.checker.getTypeAtLocation(expression);
-      
+
         const constructor = keepInsertionPoint(this.generator.builder, () => {
           return this.emitFunctionDeclaration(constructorDeclaration, thisType, argumentTypes)!;
         });
@@ -550,7 +552,6 @@ class Emitter {
             case ts.SyntaxKind.StringLiteral: {
 
                 let expr = expression as ts.StringLiteral;
-                console.log(expr);
                 console.log(this.generator.builder.getInsertBlock())
                 const ptr = this.generator.builder.createGlobalStringPtr(expr.text) as llvm.Constant;
                 const length = llvm.ConstantInt.get(this.generator.context, expr.text.length);
@@ -566,7 +567,6 @@ class Emitter {
         }
     }
 
-    /// EXPRESIONS ///
     emitCallExpression(expression: ts.CallExpression): llvm.Value {
         const isMethod = isMethodReference(
             expression.expression,
@@ -632,6 +632,15 @@ class Emitter {
                 thisType,
                 argumentTypes
             )!;
+        });
+    }
+
+    /// STATEMENTS ///
+    emitBlock(block: ts.Block): void {
+        this.generator.enviroment.withScope(undefined, scope => {
+          for (const statement of block.statements) {
+            this.emitNode(statement, scope);
+          }
         });
     }
 }
