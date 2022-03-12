@@ -30,6 +30,9 @@ import * as R from "ramda";
 import argv from "./cli";
 import * as NativeTS from "./lib";
 import * as llvm from "llvm-node";
+import * as SegfaultHandler from "segfault-handler";
+
+SegfaultHandler.registerHandler("NativeTS-crash.log");
 
 function main() {
     let files = argv.args;

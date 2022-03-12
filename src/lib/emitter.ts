@@ -28,9 +28,20 @@ import * as R from "ramda";
 
 import { LLVMGenerator } from "./generator";
 import { Scope } from "./enviroment/scopes";
-import { createGCAllocate, getBuiltin, isLLVMString, isValueType, keepInsertionPoint, newLLVMFunction } from "./utils";
+import {
+    createGCAllocate,
+    getBuiltin,
+    isLLVMString,
+    isValueType,
+    keepInsertionPoint,
+    newLLVMFunction,
+} from "./utils";
 import { getLLVMType, getStringType, getStructType } from "./types";
-import { getDeclarationBaseName, mangleFunctionDeclaration, mangleType } from "./mangle";
+import {
+    getDeclarationBaseName,
+    mangleFunctionDeclaration,
+    mangleType,
+} from "./mangle";
 import { addTypeArguments, isMethodReference } from "./tsc-utils";
 
 class Emitter {
@@ -41,20 +52,28 @@ class Emitter {
     }
 
     emitNode(node: ts.Node, scope: Scope): void {
+        switch (node.kind) {
+            case ts.SyntaxKind.Block:
+            case ts.SyntaxKind.ExpressionStatement:
+            case ts.SyntaxKind.IfStatement:
+            case ts.SyntaxKind.WhileStatement:
+            case ts.SyntaxKind.ReturnStatement:
+            case ts.SyntaxKind.VariableStatement:
+                if (scope === this.generator.enviroment.globalScope) {
+                    let fn = this.generator.module.getFunction("main");
 
-        // switch (node.kind) {
-        //     case ts.SyntaxKind.Block:
-        //     case ts.SyntaxKind.ExpressionStatement:
-        //     case ts.SyntaxKind.IfStatement:
-        //     case ts.SyntaxKind.WhileStatement:
-        //     case ts.SyntaxKind.ReturnStatement:
-        //     case ts.SyntaxKind.VariableStatement:
-        //       if (scope === this.generator.enviroment.globalScope) {
-        //         // @ts-ignore
-        //         this.generator.builder.setInsertionPoint(R.last(this.generator.module.getFunction("main").getBasicBlocks())!);
-        //       }
-        //       break;
-        //   }
+                    if (typeof fn != "undefined") {
+                        let blocks = fn.getBasicBlocks();
+
+                        if (blocks.length != 0) {
+                            this.generator.builder.setInsertionPoint(
+                                R.last(blocks)!
+                            );
+                        }
+                    }
+                }
+                break;
+        }
 
         switch (node.kind) {
             case ts.SyntaxKind.FunctionDeclaration:
@@ -74,7 +93,11 @@ class Emitter {
                 );
                 break;
             case ts.SyntaxKind.ClassDeclaration:
-                this.emitClassDeclaration(node as ts.ClassDeclaration, [], scope);
+                this.emitClassDeclaration(
+                    node as ts.ClassDeclaration,
+                    [],
+                    scope
+                );
                 break;
             case ts.SyntaxKind.ModuleDeclaration:
                 this.emitModuleDeclaration(node as ts.ModuleDeclaration, scope);
@@ -266,9 +289,7 @@ class Emitter {
     ): void {
         const name = declaration.name.text;
         const scope = new Scope(name);
-        declaration.body!.forEachChild((node) =>
-            this.emitNode(node, scope)
-        );
+        declaration.body!.forEachChild((node) => this.emitNode(node, scope));
         parentScope.set(name, scope);
     }
 
@@ -276,17 +297,23 @@ class Emitter {
         declaration: ts.FunctionLikeDeclaration,
         tsThisType: ts.Type | undefined,
         argumentTypes: ts.Type[]
-      ): llvm.Function | undefined {
+    ): llvm.Function | undefined {
         const preExisting = this.generator.module.getFunction(
-          mangleFunctionDeclaration(declaration, tsThisType, this.generator.checker)
+            mangleFunctionDeclaration(
+                declaration,
+                tsThisType,
+                this.generator.checker
+            )
         );
         if (preExisting) {
-          return preExisting;
+            return preExisting;
         }
-      
+
         let parentScope = undefined;
         if (tsThisType) {
-            parentScope = this.generator.enviroment.get(mangleType(tsThisType, this.generator.checker)) as Scope;
+            parentScope = this.generator.enviroment.get(
+                mangleType(tsThisType, this.generator.checker)
+            ) as Scope;
         }
 
         const { parent } = declaration;
@@ -294,100 +321,149 @@ class Emitter {
         if (ts.isSourceFile(parent)) {
             parentScope = this.generator.enviroment.globalScope;
         } else if (ts.isModuleBlock(parent)) {
-            parentScope = this.generator.enviroment.get(parent.parent.name.text) as Scope;
+            parentScope = this.generator.enviroment.get(
+                parent.parent.name.text
+            ) as Scope;
         } else {
-            throw Error(`Unhandled function declaration parent kind '${ts.SyntaxKind[parent.kind]}'`);
+            throw Error(
+                `Unhandled function declaration parent kind '${
+                    ts.SyntaxKind[parent.kind]
+                }'`
+            );
         }
 
         const isConstructor = ts.isConstructorDeclaration(declaration);
         const hasThisParameter =
-          ts.isMethodDeclaration(declaration) ||
-          ts.isMethodSignature(declaration) ||
-          ts.isIndexSignatureDeclaration(declaration) ||
-          ts.isPropertyDeclaration(declaration);
+            ts.isMethodDeclaration(declaration) ||
+            ts.isMethodSignature(declaration) ||
+            ts.isIndexSignatureDeclaration(declaration) ||
+            ts.isPropertyDeclaration(declaration);
         const thisType = tsThisType
-          ? (this.generator.enviroment.get(mangleType(tsThisType, this.generator.checker)) as Scope).data!.type
-          : undefined;
+            ? (
+                  this.generator.enviroment.get(
+                      mangleType(tsThisType, this.generator.checker)
+                  ) as Scope
+              ).data!.type
+            : undefined;
         let thisValue: llvm.Value;
-      
+
         let tsReturnType: ts.Type;
         if (ts.isIndexSignatureDeclaration(declaration) && tsThisType) {
-          tsReturnType = this.generator.checker.getIndexTypeOfType(tsThisType, ts.IndexKind.Number)!;
+            tsReturnType = this.generator.checker.getIndexTypeOfType(
+                tsThisType,
+                ts.IndexKind.Number
+            )!;
         } else {
-          if (ts.isPropertyDeclaration(declaration)) {
+            if (ts.isPropertyDeclaration(declaration)) {
+                tsReturnType = this.generator.checker.getTypeFromTypeNode(
 
-            // @ts-ignore
-            tsReturnType = this.generator.checker.getTypeFromTypeNode(declaration.type!);
-          } else {
-            const signature = this.generator.checker.getSignatureFromDeclaration(declaration)!;
-            tsReturnType = signature.getReturnType();
-          }
+                    // @ts-ignore
+                    declaration.type!
+                );
+            } else {
+                const signature =
+                    this.generator.checker.getSignatureFromDeclaration(
+                        declaration
+                    )!;
+                tsReturnType = signature.getReturnType();
+            }
         }
-      
-        let returnType = isConstructor ? thisType!.getPointerTo() : getLLVMType(tsReturnType, this.generator);
+
+        let returnType = isConstructor
+            ? thisType!.getPointerTo()
+            : getLLVMType(tsReturnType, this.generator);
         if (ts.isIndexSignatureDeclaration(declaration)) {
-          returnType = returnType.getPointerTo();
+            returnType = returnType.getPointerTo();
         }
-        const parameterTypes = argumentTypes.map(argumentType => getLLVMType(argumentType, this.generator));
+        const parameterTypes = argumentTypes.map((argumentType) =>
+            getLLVMType(argumentType, this.generator)
+        );
         if (hasThisParameter) {
-          parameterTypes.unshift(isValueType(thisType!) ? thisType! : thisType!.getPointerTo());
+            parameterTypes.unshift(
+                isValueType(thisType!) ? thisType! : thisType!.getPointerTo()
+            );
         }
-        const qualifiedName = mangleFunctionDeclaration(declaration, tsThisType, this.generator.checker);
-        const func = newLLVMFunction(returnType, parameterTypes, qualifiedName, this.generator.module);
+        const qualifiedName = mangleFunctionDeclaration(
+            declaration,
+            tsThisType,
+            this.generator.checker
+        );
+        const func = newLLVMFunction(
+            returnType,
+            parameterTypes,
+            qualifiedName,
+            this.generator.module
+        );
         const body =
-          ts.isMethodSignature(declaration) ||
-          ts.isIndexSignatureDeclaration(declaration) ||
-          ts.isPropertyDeclaration(declaration)
-            ? undefined
-            : declaration.body;
-      
+            ts.isMethodSignature(declaration) ||
+            ts.isIndexSignatureDeclaration(declaration) ||
+            ts.isPropertyDeclaration(declaration)
+                ? undefined
+                : declaration.body;
+
         if (body) {
-            this.generator.enviroment.withScope(qualifiedName, (bodyScope: Scope) => {
-            const parameterNames = ts.isPropertyDeclaration(declaration)
-              ? []
-              : this.generator.checker.getSignatureFromDeclaration(declaration)!.parameters.map((parameter: any) => parameter.name);
-      
-            if (hasThisParameter) {
-              parameterNames.unshift("this");
-            }
-            for (const [parameterName, argument] of R.zip(parameterNames, func.getArguments())) {
+            this.generator.enviroment.withScope(
+                qualifiedName,
+                (bodyScope: Scope) => {
+                    const parameterNames = ts.isPropertyDeclaration(declaration)
+                        ? []
+                        : this.generator.checker
+                              .getSignatureFromDeclaration(declaration)!
+                              .parameters.map(
+                                  (parameter: any) => parameter.name
+                              );
 
-                // @ts-ignore
-                argument.name = parameterName;
+                    if (hasThisParameter) {
+                        parameterNames.unshift("this");
+                    }
+                    for (const [parameterName, argument] of R.zip(
+                        parameterNames,
+                        func.getArguments()
+                    )) {
+                        // @ts-ignore
+                        argument.name = parameterName;
 
-                // @ts-ignore
-                bodyScope.set(parameterName, argument);
-            }
-      
-            const entryBlock = llvm.BasicBlock.create(this.generator.context, "entry", func);
-            this.generator.builder.setInsertionPoint(entryBlock);
-      
-            if (isConstructor) {
-              thisValue = createGCAllocate(thisType!, this.generator);
-              bodyScope.set("this", thisValue);
-            }
+                        // @ts-ignore
+                        bodyScope.set(parameterName, argument);
+                    }
 
-            body.forEachChild((node: any) => this.emitNode(node, bodyScope));
+                    const entryBlock = llvm.BasicBlock.create(
+                        this.generator.context,
+                        "entry",
+                        func
+                    );
+                    this.generator.builder.setInsertionPoint(entryBlock);
 
-            // @ts-ignore
-            if (!this.generator.builder.getInsertBlock().getTerminator()) {
-              if (returnType.isVoidTy()) {
-                this.generator.builder.createRetVoid();
-              } else if (isConstructor) {
-                this.generator.builder.createRet(thisValue);
-              } else {
-                // TODO: Emit LLVM 'unreachable' instruction.
-              }
-            }
-          });
+                    if (isConstructor) {
+                        thisValue = createGCAllocate(thisType!, this.generator);
+                        bodyScope.set("this", thisValue);
+                    }
+
+                    body.forEachChild((node: any) =>
+                        this.emitNode(node, bodyScope)
+                    );
+
+                    if (
+                        // @ts-ignore
+                        !this.generator.builder.getInsertBlock().getTerminator()
+                    ) {
+                        if (returnType.isVoidTy()) {
+                            this.generator.builder.createRetVoid();
+                        } else if (isConstructor) {
+                            this.generator.builder.createRet(thisValue);
+                        } else {
+                            // TODO: Emit LLVM 'unreachable' instruction.
+                        }
+                    }
+                }
+            );
         }
-      
+
         llvm.verifyFunction(func);
         const name = getDeclarationBaseName(declaration);
         parentScope.set(name, func);
         return func;
-      }
-
+    }
 
     /// EXPRESIONS ///
 
@@ -437,9 +513,18 @@ class Emitter {
                     parseFloat(expression.text)
                 );
             case ts.SyntaxKind.StringLiteral: {
-                const ptr = this.generator.builder.createGlobalStringPtr(expression.text) as llvm.Constant;
-                const length = llvm.ConstantInt.get(this.generator.context, expression.text.length);
-                return llvm.ConstantStruct.get(getStringType(this.generator.context), [ptr, length]);
+                console.log("DEBUG");
+                const ptr = this.generator.builder.createGlobalStringPtr(
+                    expression.text
+                ) as llvm.Constant;
+                const length = llvm.ConstantInt.get(
+                    this.generator.context,
+                    expression.text.length
+                );
+                return llvm.ConstantStruct.get(
+                    getStringType(this.generator.context),
+                    [ptr, length]
+                );
             }
 
             default:
@@ -453,24 +538,41 @@ class Emitter {
 
     /// EXPRESIONS ///
     emitCallExpression(expression: ts.CallExpression): llvm.Value {
-        const isMethod = isMethodReference(expression.expression, this.generator.checker);
-        const declaration = this.generator.checker.getSymbolAtLocation(expression.expression)!.valueDeclaration;
+        const isMethod = isMethodReference(
+            expression.expression,
+            this.generator.checker
+        );
+        const declaration = this.generator.checker.getSymbolAtLocation(
+            expression.expression
+        )!.valueDeclaration;
         let thisType: ts.Type | undefined;
         if (isMethod) {
-          const methodReference = expression.expression as ts.PropertyAccessExpression;
-          thisType = this.generator.checker.getTypeAtLocation(methodReference.expression);
+            const methodReference =
+                expression.expression as ts.PropertyAccessExpression;
+            thisType = this.generator.checker.getTypeAtLocation(
+                methodReference.expression
+            );
         }
-      
-        const argumentTypes = expression.arguments.map(this.generator.checker.getTypeAtLocation);
-        const callee = this.getOrEmitFunctionForCall(declaration as ts.FunctionLikeDeclaration, thisType, argumentTypes);
-      
-        const args = expression.arguments.map(argument => this.emitExpression(argument));
-      
+
+        const argumentTypes = expression.arguments.map(
+            this.generator.checker.getTypeAtLocation
+        );
+        const callee = this.getOrEmitFunctionForCall(
+            declaration as ts.FunctionLikeDeclaration,
+            thisType,
+            argumentTypes
+        );
+
+        const args = expression.arguments.map((argument) =>
+            this.emitExpression(argument)
+        );
+
         if (isMethod) {
-          const propertyAccess = expression.expression as ts.PropertyAccessExpression;
-          args.unshift(this.emitExpression(propertyAccess.expression));
+            const propertyAccess =
+                expression.expression as ts.PropertyAccessExpression;
+            args.unshift(this.emitExpression(propertyAccess.expression));
         }
-      
+
         return this.generator.builder.createCall(callee, args);
     }
 
@@ -478,22 +580,28 @@ class Emitter {
         declaration: ts.Declaration,
         thisType: ts.Type | undefined,
         argumentTypes: ts.Type[]
-      ) {
+    ) {
         if (
-          !ts.isFunctionDeclaration(declaration) &&
-          !ts.isMethodDeclaration(declaration) &&
-          !ts.isMethodSignature(declaration) &&
-          !ts.isIndexSignatureDeclaration(declaration) &&
-          !ts.isPropertyDeclaration(declaration) &&
-          !ts.isConstructorDeclaration(declaration)
+            !ts.isFunctionDeclaration(declaration) &&
+            !ts.isMethodDeclaration(declaration) &&
+            !ts.isMethodSignature(declaration) &&
+            !ts.isIndexSignatureDeclaration(declaration) &&
+            !ts.isPropertyDeclaration(declaration) &&
+            !ts.isConstructorDeclaration(declaration)
         ) {
-          throw Error(
-            `Invalid function call target '${getDeclarationBaseName(declaration)}' (${ts.SyntaxKind[declaration.kind]})`
-          );
+            throw Error(
+                `Invalid function call target '${getDeclarationBaseName(
+                    declaration
+                )}' (${ts.SyntaxKind[declaration.kind]})`
+            );
         }
 
         return keepInsertionPoint(this.generator.builder, () => {
-          return this.emitFunctionDeclaration(declaration as ts.FunctionLikeDeclaration, thisType, argumentTypes)!;
+            return this.emitFunctionDeclaration(
+                declaration as ts.FunctionLikeDeclaration,
+                thisType,
+                argumentTypes
+            )!;
         });
     }
 }

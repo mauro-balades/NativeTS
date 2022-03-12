@@ -82,15 +82,26 @@ function getBuiltinFunctionType(name: BuiltinName, context: llvm.LLVMContext) {
 
 export function createGCAllocate(type: llvm.Type, generator: LLVMGenerator) {
     if (isValueType(type)) {
-      throw Error(`Allocating value types not supported, tried to allocate '${type}'`);
+        throw Error(
+            `Allocating value types not supported, tried to allocate '${type}'`
+        );
     }
     const size = generator.module.dataLayout.getTypeStoreSize(type);
-    const allocate = getBuiltin("gc__allocate", generator.context, generator.module);
-    const returnValue = generator.builder.createCall(allocate.callee, [llvm.ConstantInt.get(generator.context, size, 32)]);
+    const allocate = getBuiltin(
+        "gc__allocate",
+        generator.context,
+        generator.module
+    );
+    const returnValue = generator.builder.createCall(allocate.callee, [
+        llvm.ConstantInt.get(generator.context, size, 32),
+    ]);
     return generator.builder.createBitCast(returnValue, type.getPointerTo());
 }
 
-export function keepInsertionPoint<T>(builder: llvm.IRBuilder, emit: () => T): T {
+export function keepInsertionPoint<T>(
+    builder: llvm.IRBuilder,
+    emit: () => T
+): T {
     const backup = builder.getInsertBlock();
     const result = emit();
 
