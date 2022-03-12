@@ -144,7 +144,8 @@ class Emitter {
                 return this.emitNewExpression(expression as ts.NewExpression);
             case ts.SyntaxKind.CallExpression:
                 return this.emitCallExpression(expression as ts.CallExpression);
-
+            case ts.SyntaxKind.PropertyAccessExpression:
+                return this.emitPropertyAccessExpression(expression as ts.PropertyAccessExpression)
             case ts.SyntaxKind.Identifier:
                 let expr = expression as ts.Identifier;
                 return this.generator.enviroment.get(expr.text) as llvm.Value;
@@ -234,7 +235,7 @@ class Emitter {
     }
 
     convertToRvalue(value: llvm.Value) {
-        if (value.type?.isPointerTy() && isValueType(value.type.elementType)) {
+        if (value?.type?.isPointerTy() && isValueType(value.type.elementType)) {
             return this.generator.builder.createLoad(
                 value,
                 value.name + ".load"
@@ -485,7 +486,7 @@ class Emitter {
         return func;
     }
 
-    /// EXPRESIONS ///
+    /// EXPRESSIONS ///
 
     emitPrefixUnaryExpression(
         expression: ts.PrefixUnaryExpression
@@ -503,6 +504,24 @@ class Emitter {
                     }'`
                 );
         }
+    }
+
+    emitPropertyAccessExpression(expression: ts.PropertyAccessExpression): any {
+
+        let object = expression.expression;
+        let property = expression.name.text;
+
+        switch (property) {
+            // TODO: length
+            default:
+                if (ts.isIdentifier(object)) {
+                    const value = this.generator.enviroment.get((object as ts.Identifier).text);
+                    if (value instanceof Scope) {
+                        return value.get(property) as llvm.Value;
+                    }
+                }
+        }
+
     }
 
     emitNewExpression(expression: ts.NewExpression): llvm.Value {
@@ -672,9 +691,9 @@ class Emitter {
             // @ts-ignore
             const builder = new llvm.IRBuilder(this.generator.builder.getInsertBlock().parent!.getEntryBlock()!);
             const arraySize = undefined;
-            const alloca = this.generator.builder.createAlloca(getLLVMType(type, this.generator), arraySize, name);
+            const alloca = builder.createAlloca(getLLVMType(type, this.generator), arraySize, name);
 
-            this.generator.builder.createStore(initializer, alloca);
+            this.generator.builder.createStore(initializer, alloca as llvm.Value, undefined);
             parentScope.set(name, alloca);
           }
         }

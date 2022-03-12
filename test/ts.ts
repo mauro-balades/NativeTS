@@ -1,9 +1,21 @@
 
 class Hello {
-    public static d: String = "hello";
+    constructor() {
+    }
+
+    he() {
+        this.llo()
+    }
+
+    llo() {
+        var l = this.foo()
+    }
+
+    foo(): String {
+        return "Hello"
+    }
 }
 
-console.log(Hello.d)
 
-
-const lol = "a";
+var h = new Hello()
+h.he()
