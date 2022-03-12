@@ -134,6 +134,8 @@ class Emitter {
                 return this.emitLiteralExpression(
                     expression as ts.LiteralExpression
                 );
+            case ts.SyntaxKind.NewExpression:
+                return this.emitNewExpression(expression as ts.NewExpression);
             case ts.SyntaxKind.CallExpression:
                 return this.emitCallExpression(expression as ts.CallExpression);
             default:
@@ -256,6 +258,7 @@ class Emitter {
         if (declaration.typeParameters && typeArguments.length === 0) {
             return;
         }
+        console.log(declaration)
 
         const thisType = addTypeArguments(
             this.generator.checker.getTypeAtLocation(declaration),
@@ -323,6 +326,12 @@ class Emitter {
         } else if (ts.isModuleBlock(parent)) {
             parentScope = this.generator.enviroment.get(
                 parent.parent.name.text
+            ) as Scope;
+        } else if (ts.isClassDeclaration(parent)) {
+            parentScope = this.generator.enviroment.get(
+
+                // @ts-ignore
+                parent.name.escapedText
             ) as Scope;
         } else {
             throw Error(
@@ -483,6 +492,31 @@ class Emitter {
                     }'`
                 );
         }
+    }
+
+    emitNewExpression(expression: ts.NewExpression): llvm.Value {
+        const declaration = this.generator.checker.getSymbolAtLocation(expression.expression)!.valueDeclaration;
+
+        // @ts-ignore
+        if (!ts.isClassDeclaration(declaration)) {
+          throw Error("Cannot 'new' non-class type");
+        }
+      
+        const constructorDeclaration = declaration.members.find(ts.isConstructorDeclaration);
+      
+        if (!constructorDeclaration) {
+            throw Error("Calling 'new' requires the type to have a constructor");
+        }
+      
+        const argumentTypes = expression.arguments!.map(this.generator.checker.getTypeAtLocation);
+        const thisType = this.generator.checker.getTypeAtLocation(expression);
+      
+        const constructor = keepInsertionPoint(this.generator.builder, () => {
+          return this.emitFunctionDeclaration(constructorDeclaration, thisType, argumentTypes)!;
+        });
+      
+        const args = expression.arguments!.map(argument => this.emitExpression(argument));
+        return this.generator.builder.createCall(constructor, args);
     }
 
     emitBinaryPlus(left: llvm.Value, right: llvm.Value): llvm.Value {

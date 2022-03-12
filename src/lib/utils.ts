@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+import { privateEncrypt } from "crypto";
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { LLVMGenerator } from "./generator";
@@ -97,7 +98,7 @@ export function createGCAllocate(type: llvm.Type, generator: LLVMGenerator) {
     const returnValue = generator.builder.createCall(functionType, allocate.callee, [
         llvm.ConstantInt.get(generator.context, size, 32),
     ]);
-    
+
     return generator.builder.createBitCast(returnValue, type.getPointerTo());
 }
 
@@ -108,10 +109,8 @@ export function keepInsertionPoint<T>(
     const backup = builder.getInsertBlock();
     const result = emit();
 
-    if (backup) {
-        builder.setInsertionPoint(backup);
-    }
-
+    // @ts-ignore
+    builder.setInsertionPoint(backup);
     return result;
 }
 

@@ -1,3 +1,7 @@
-function lol(hello: String) {
-
+class hello {
+    constructor() {
+        
+    }
 }
+
+new hello()
