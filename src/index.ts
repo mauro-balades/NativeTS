@@ -59,12 +59,12 @@ function main() {
     let generator = new NativeTS.generator.LLVMGenerator(module);
     let builder = generator.builder;
 
+    builder.setInsertionPoint(R.last(module.mainFunc.getBasicBlocks())!);
+    builder.createRet(llvm.Constant.getNullValue(module.mainRetT));
+
     for (const sourceFile of program.getSourceFiles()) {
         generator.generateFrom(sourceFile);
     }
-
-    builder.setInsertionPoint(R.last(module.mainFunc.getBasicBlocks())!);
-    builder.createRet(llvm.Constant.getNullValue(module.mainRetT));
 
     let mod = module.getModule();
 

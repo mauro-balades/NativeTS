@@ -516,6 +516,8 @@ class Emitter {
             case ts.SyntaxKind.StringLiteral: {
 
                 let expr = expression as ts.StringLiteral;
+                console.log(expr);
+                console.log(this.generator.builder.getInsertBlock())
                 const ptr = this.generator.builder.createGlobalStringPtr(expr.text) as llvm.Constant;
                 const length = llvm.ConstantInt.get(this.generator.context, expr.text.length);
                 return llvm.ConstantStruct.get(getStringType(this.generator.context), [ptr, length]);
