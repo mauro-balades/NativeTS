@@ -30,6 +30,8 @@ import { Scope } from "./enviroment/scopes";
 import { getStringType } from "./types";
 
 import EmitterGenerator from "./emitters/gen/generation";
+
+import BlockStatement from "./emitters/block-statement";
 import VariableStatement from "./emitters/variable-statement";
 
 import FunctionDeclaration from "./emitters/function-declaration";
@@ -40,6 +42,7 @@ class Emitter {
     readonly generator: LLVMGenerator;
     readonly gen: EmitterGenerator;
 
+    readonly blockStatement      : BlockStatement;
     readonly classDeclaration    : ClassDeclaration;
     readonly variableStatement   : VariableStatement;
     readonly moduleDeclaration   : ModuleDeclaration;
@@ -49,6 +52,7 @@ class Emitter {
     constructor(generator: LLVMGenerator) {
         this.generator = generator;
 
+        this.blockStatement      = new BlockStatement(this);
         this.classDeclaration    = new ClassDeclaration(this);
         this.moduleDeclaration   = new ModuleDeclaration(this);
         this.variableStatement   = new VariableStatement(this);
@@ -147,11 +151,7 @@ class Emitter {
 
     /// STATEMENTS ///
     emitBlock(block: ts.Block): void {
-        this.generator.enviroment.withScope(undefined, (scope) => {
-            for (const statement of block.statements) {
-                this.emitNode(statement, scope);
-            }
-        });
+        this.blockStatement.run(block);
     }
 }
 

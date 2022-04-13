@@ -21,3 +21,39 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
+
+
+import ts = require("typescript");
+import Emitter from "../emitter";
+import { Scope } from "../enviroment/scopes";
+import { LLVMGenerator } from "../generator";
+import {
+    mangleType,
+} from "../mangle";
+import { addTypeArguments } from "../tsc-utils";
+import { getStructType } from "../types";
+import EmitterTemplate from "./template";
+
+class BlockStatement extends EmitterTemplate {
+    readonly generator: LLVMGenerator;
+    readonly emitter: Emitter;
+
+    constructor(emitter: Emitter) {
+        super(emitter);
+        this.emitter = emitter;
+        this.generator = emitter.generator;
+    }
+
+    // @ts-ignore
+    public override run(
+        block: ts.Block
+    ): void {
+        this.generator.enviroment.withScope(undefined, (scope) => {
+            for (const statement of block.statements) {
+                this.emitter.emitNode(statement, scope);
+            }
+        });
+    }
+}
+
+export default BlockStatement;
