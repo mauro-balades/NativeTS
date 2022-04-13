@@ -1,21 +1,6 @@
+function hello() {}
 
-class Hello {
-    constructor() {
-    }
+("awd");
+hello();
 
-    he() {
-        this.llo()
-    }
-
-    llo() {
-        var l = this.foo()
-    }
-
-    foo(): String {
-        return "Hello"
-    }
-}
-
-
-var h = new Hello()
-h.he()
+console.log("d");

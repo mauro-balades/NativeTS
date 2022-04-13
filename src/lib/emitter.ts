@@ -43,12 +43,24 @@ import {
     mangleType,
 } from "./mangle";
 import { addTypeArguments, isMethodReference, isVarConst } from "./tsc-utils";
+import VariableStatement from "./emitters/variable-statement";
+import EmitterGenerator from "./emitters/gen/generation";
+import FunctionDeclaration from "./emitters/function-declaration";
 
 class Emitter {
     readonly generator: LLVMGenerator;
+    readonly gen: EmitterGenerator;
+
+    readonly variableStatement: VariableStatement;
+    readonly functionDeclaration: FunctionDeclaration;
 
     constructor(generator: LLVMGenerator) {
         this.generator = generator;
+
+        this.variableStatement = new VariableStatement(this);
+        this.functionDeclaration = new FunctionDeclaration(this);
+
+        this.gen = new EmitterGenerator(this);
     }
 
     emitNode(node: ts.Node, scope: Scope): void {
@@ -80,11 +92,12 @@ class Emitter {
             case ts.SyntaxKind.MethodDeclaration:
             case ts.SyntaxKind.IndexSignature:
             case ts.SyntaxKind.Constructor:
-                // Emitted when called.
                 break;
 
             case ts.SyntaxKind.ExpressionStatement:
-                this.emitExpressionStatement(node as ts.ExpressionStatement);
+                this.gen.emitExpressionStatement(
+                    node as ts.ExpressionStatement
+                );
                 break;
             case ts.SyntaxKind.InterfaceDeclaration:
                 this.visitInterfaceDeclaration(
@@ -106,7 +119,7 @@ class Emitter {
                 this.emitModuleDeclaration(node as ts.ModuleDeclaration, scope);
                 break;
             case ts.SyntaxKind.VariableStatement:
-                this.emitVariableStatement(node as ts.VariableStatement, scope)
+                this.variableStatement.run(node as ts.VariableStatement, scope);
                 break;
             case ts.SyntaxKind.EndOfFileToken:
                 break;
@@ -117,131 +130,6 @@ class Emitter {
                     }': ${node.getText()}`
                 );
         }
-    }
-
-    /// GENERATION FUNCTIONS ///
-
-    emitExpressionStatement(statement: ts.ExpressionStatement): void {
-        this.emitLvalueExpression(statement.expression);
-    }
-
-    emitLvalueExpression(expression: ts.Expression): llvm.Value {
-        switch (expression.kind) {
-            case ts.SyntaxKind.PrefixUnaryExpression:
-                return this.emitPrefixUnaryExpression(
-                    expression as ts.PrefixUnaryExpression
-                );
-            case ts.SyntaxKind.BinaryExpression:
-                return this.emitBinaryExpression(
-                    expression as ts.BinaryExpression
-                );
-            case ts.SyntaxKind.FirstLiteralToken:
-            case ts.SyntaxKind.StringLiteral:
-                return this.emitLiteralExpression(
-                    expression as ts.LiteralExpression
-                );
-            case ts.SyntaxKind.NewExpression:
-                return this.emitNewExpression(expression as ts.NewExpression);
-            case ts.SyntaxKind.CallExpression:
-                return this.emitCallExpression(expression as ts.CallExpression);
-            case ts.SyntaxKind.PropertyAccessExpression:
-                return this.emitPropertyAccessExpression(expression as ts.PropertyAccessExpression)
-            case ts.SyntaxKind.Identifier:
-                let expr = expression as ts.Identifier;
-                return this.generator.enviroment.get(expr.text) as llvm.Value;
-            case ts.SyntaxKind.ThisKeyword:
-                return this.generator.enviroment.get("this") as llvm.Value;
-            default:
-                throw Error(
-                    `Unhandled ts.Expression '${
-                        ts.SyntaxKind[expression.kind]
-                    }'`
-                );
-        }
-    }
-
-    emitBinaryExpression(expression: ts.BinaryExpression): llvm.Value {
-        const { left, right } = expression;
-
-        switch (expression.operatorToken.kind) {
-            case ts.SyntaxKind.EqualsToken:
-                throw Error("TODO: equal token");
-            case ts.SyntaxKind.EqualsEqualsEqualsToken:
-                return this.generator.builder.createFCmpOEQ(
-                    this.emitExpression(left),
-                    this.emitExpression(right)
-                );
-            case ts.SyntaxKind.ExclamationEqualsEqualsToken:
-                return this.generator.builder.createFCmpONE(
-                    this.emitExpression(left),
-                    this.emitExpression(right)
-                );
-            case ts.SyntaxKind.LessThanToken:
-                return this.generator.builder.createFCmpOLT(
-                    this.emitExpression(left),
-                    this.emitExpression(right)
-                );
-            case ts.SyntaxKind.GreaterThanToken:
-                return this.generator.builder.createFCmpOGT(
-                    this.emitExpression(left),
-                    this.emitExpression(right)
-                );
-            case ts.SyntaxKind.LessThanEqualsToken:
-                return this.generator.builder.createFCmpOLE(
-                    this.emitExpression(left),
-                    this.emitExpression(right)
-                );
-            case ts.SyntaxKind.GreaterThanEqualsToken:
-                return this.generator.builder.createFCmpOGE(
-                    this.emitExpression(left),
-                    this.emitExpression(right)
-                );
-            case ts.SyntaxKind.PlusToken:
-                return this.emitBinaryPlus(
-                    this.emitExpression(left),
-                    this.emitExpression(right)
-                );
-            case ts.SyntaxKind.MinusToken:
-                return this.generator.builder.createFSub(
-                    this.emitExpression(left),
-                    this.emitExpression(right)
-                );
-            case ts.SyntaxKind.AsteriskToken:
-                return this.generator.builder.createFMul(
-                    this.emitExpression(left),
-                    this.emitExpression(right)
-                );
-            case ts.SyntaxKind.SlashToken:
-                return this.generator.builder.createFDiv(
-                    this.emitExpression(left),
-                    this.emitExpression(right)
-                );
-            case ts.SyntaxKind.PercentToken:
-                return this.generator.builder.createFRem(
-                    this.emitExpression(left),
-                    this.emitExpression(right)
-                );
-            default:
-                throw Error(
-                    `Unhandled ts.BinaryExpression operator '${
-                        ts.SyntaxKind[expression.operatorToken.kind]
-                    }'`
-                );
-        }
-    }
-
-    emitExpression(expression: ts.Expression): llvm.Value {
-        return this.convertToRvalue(this.emitLvalueExpression(expression));
-    }
-
-    convertToRvalue(value: llvm.Value) {
-        if (value?.type?.isPointerTy() && isValueType(value.type.elementType)) {
-            return this.generator.builder.createLoad(
-                value,
-                value.name + ".load"
-            );
-        }
-        return value;
     }
 
     /// DECLARATIONS ///
@@ -308,395 +196,13 @@ class Emitter {
         parentScope.set(name, scope);
     }
 
-    emitFunctionDeclaration(
-        declaration: ts.FunctionLikeDeclaration,
-        tsThisType: ts.Type | undefined,
-        argumentTypes: ts.Type[]
-    ): llvm.Function | undefined {
-        const preExisting = this.generator.module.getFunction(
-            mangleFunctionDeclaration(
-                declaration,
-                tsThisType,
-                this.generator.checker
-            )
-        );
-        if (preExisting) {
-            return preExisting;
-        }
-
-        let parentScope = undefined;
-        if (tsThisType) {
-            parentScope = this.generator.enviroment.get(
-                mangleType(tsThisType, this.generator.checker)
-            ) as Scope;
-        }
-
-        const { parent } = declaration;
-
-        if (ts.isSourceFile(parent)) {
-            parentScope = this.generator.enviroment.globalScope;
-        } else if (ts.isModuleBlock(parent)) {
-            parentScope = this.generator.enviroment.get(
-                parent.parent.name.text
-            ) as Scope;
-        } else if (ts.isClassDeclaration(parent)) {
-            parentScope = this.generator.enviroment.get(
-
-                // @ts-ignore
-                parent.name.escapedText
-            ) as Scope;
-        } else {
-            throw Error(
-                `Unhandled function declaration parent kind '${
-                    ts.SyntaxKind[parent.kind]
-                }'`
-            );
-        }
-
-        const isConstructor = ts.isConstructorDeclaration(declaration);
-        const hasThisParameter =
-            ts.isMethodDeclaration(declaration) ||
-            ts.isMethodSignature(declaration) ||
-            ts.isIndexSignatureDeclaration(declaration) ||
-            ts.isPropertyDeclaration(declaration);
-        const thisType = tsThisType
-            ? (
-                  this.generator.enviroment.get(
-                      mangleType(tsThisType, this.generator.checker)
-                  ) as Scope
-              ).data!.type
-            : undefined;
-        let thisValue: llvm.Value;
-
-        let tsReturnType: ts.Type;
-        if (ts.isIndexSignatureDeclaration(declaration) && tsThisType) {
-            tsReturnType = this.generator.checker.getIndexTypeOfType(
-                tsThisType,
-                ts.IndexKind.Number
-            )!;
-        } else {
-            if (ts.isPropertyDeclaration(declaration)) {
-                tsReturnType = this.generator.checker.getTypeFromTypeNode(
-
-                    // @ts-ignore
-                    declaration.type!
-                );
-            } else {
-                const signature =
-                    this.generator.checker.getSignatureFromDeclaration(
-                        declaration
-                    )!;
-                tsReturnType = signature.getReturnType();
-            }
-        }
-
-        let returnType = isConstructor
-            ? thisType!.getPointerTo()
-            : getLLVMType(tsReturnType, this.generator);
-        if (ts.isIndexSignatureDeclaration(declaration)) {
-            returnType = returnType.getPointerTo();
-        }
-        const parameterTypes = argumentTypes.map((argumentType) =>
-            getLLVMType(argumentType, this.generator)
-        );
-        if (hasThisParameter) {
-            parameterTypes.unshift(
-                isValueType(thisType!) ? thisType! : thisType!.getPointerTo()
-            );
-        }
-        const qualifiedName = mangleFunctionDeclaration(
-            declaration,
-            tsThisType,
-            this.generator.checker
-        );
-        const func = newLLVMFunction(
-            returnType,
-            parameterTypes,
-            qualifiedName,
-            this.generator.module
-        );
-        const body =
-            ts.isMethodSignature(declaration) ||
-            ts.isIndexSignatureDeclaration(declaration) ||
-            ts.isPropertyDeclaration(declaration)
-                ? undefined
-                : declaration.body;
-
-        if (body) {
-            this.generator.enviroment.withScope(
-                qualifiedName,
-                (bodyScope: Scope) => {
-                    const parameterNames = ts.isPropertyDeclaration(declaration)
-                        ? []
-                        : this.generator.checker
-                              .getSignatureFromDeclaration(declaration)!
-                              .parameters.map(
-                                  (parameter: any) => parameter.name
-                              );
-
-                    if (hasThisParameter) {
-                        parameterNames.unshift("this");
-                    }
-                    for (const [parameterName, argument] of R.zip(
-                        parameterNames,
-                        func.getArguments()
-                    )) {
-                        // @ts-ignore
-                        argument.name = parameterName;
-
-                        // @ts-ignore
-                        bodyScope.set(parameterName, argument);
-                    }
-
-                    const entryBlock = llvm.BasicBlock.create(
-                        this.generator.context,
-                        "entry",
-                        func
-                    );
-                    this.generator.builder.setInsertionPoint(entryBlock);
-
-                    if (isConstructor) {
-                        thisValue = createGCAllocate(thisType!, this.generator);
-                        bodyScope.set("this", thisValue);
-                    }
-
-                    body.forEachChild((node: any) =>
-                        this.emitNode(node, bodyScope)
-                    );
-
-                    if (
-                        // @ts-ignore
-                        !this.generator.builder.getInsertBlock().getTerminator()
-                    ) {
-                        if (returnType.isVoidTy()) {
-                            this.generator.builder.createRetVoid();
-                        } else if (isConstructor) {
-                            this.generator.builder.createRet(thisValue);
-                        } else {
-                            // TODO: Emit LLVM 'unreachable' instruction.
-                        }
-                    }
-                }
-            );
-        }
-
-        llvm.verifyFunction(func);
-        const name = getDeclarationBaseName(declaration);
-        parentScope.set(name, func);
-        return func;
-    }
-
-    /// EXPRESSIONS ///
-
-    emitPrefixUnaryExpression(
-        expression: ts.PrefixUnaryExpression
-    ): llvm.Value {
-        const { operand } = expression;
-
-        switch (expression.operator) {
-            case ts.SyntaxKind.PlusToken:
-                return this.emitExpression(operand);
-
-            default:
-                throw Error(
-                    `Unhandled ts.PrefixUnaryOperator operator '${
-                        ts.SyntaxKind[expression.operator]
-                    }'`
-                );
-        }
-    }
-
-    emitPropertyAccessExpression(expression: ts.PropertyAccessExpression): any {
-
-        let object = expression.expression;
-        let property = expression.name.text;
-
-        switch (property) {
-            // TODO: length
-            default:
-                if (ts.isIdentifier(object)) {
-                    const value = this.generator.enviroment.get((object as ts.Identifier).text);
-                    if (value instanceof Scope) {
-                        return value.get(property) as llvm.Value;
-                    }
-                }
-        }
-
-    }
-
-    emitNewExpression(expression: ts.NewExpression): llvm.Value {
-        const declaration = this.generator.checker.getSymbolAtLocation(expression.expression)!.valueDeclaration;
-
-        // @ts-ignore
-        if (!ts.isClassDeclaration(declaration)) {
-          throw Error("Cannot 'new' non-class type");
-        }
-      
-        const constructorDeclaration = declaration.members.find(ts.isConstructorDeclaration);
-      
-        if (!constructorDeclaration) {
-            throw Error("Calling 'new' requires the type to have a constructor");
-        }
-      
-        const argumentTypes = expression.arguments!.map(this.generator.checker.getTypeAtLocation);
-        const thisType = this.generator.checker.getTypeAtLocation(expression);
-
-        const constructor = keepInsertionPoint(this.generator.builder, () => {
-          return this.emitFunctionDeclaration(constructorDeclaration, thisType, argumentTypes)!;
-        });
-      
-        const args = expression.arguments!.map(argument => this.emitExpression(argument));
-        return this.generator.builder.createCall(constructor, args);
-    }
-
-    emitBinaryPlus(left: llvm.Value, right: llvm.Value): llvm.Value {
-        if (left.type.isDoubleTy() && right.type.isDoubleTy()) {
-            return this.generator.builder.createFAdd(left, right);
-        }
-
-        if (isLLVMString(left.type) && isLLVMString(right.type)) {
-            const concat = getBuiltin(
-                "string__concat",
-                this.generator.context,
-                this.generator.module
-            );
-            return this.generator.builder.createCall(concat.callee, [
-                left,
-                right,
-            ]);
-        }
-
-        throw Error("Invalid operand types to binary plus");
-    }
-
-    emitLiteralExpression(expression: ts.LiteralExpression): llvm.Value {
-        switch (expression.kind) {
-            case ts.SyntaxKind.NumericLiteral:
-                let expr = expression as ts.NumericLiteral;
-                return llvm.ConstantFP.get(
-                    this.generator.context,
-                    parseFloat(expr.text)
-                );
-            case ts.SyntaxKind.StringLiteral: {
-
-                let expr = expression as ts.StringLiteral;
-                const ptr = this.generator.builder.createGlobalStringPtr(expr.text) as llvm.Constant;
-                const length = llvm.ConstantInt.get(this.generator.context, expr.text.length);
-                return llvm.ConstantStruct.get(getStringType(this.generator.context), [ptr, length]);
-            }
-
-            default:
-                throw Error(
-                    `Unhandled ts.LiteralExpression literal value '${
-                        ts.SyntaxKind[expression.kind]
-                    }'`
-                );
-        }
-    }
-
-    emitCallExpression(expression: ts.CallExpression): llvm.Value {
-        const isMethod = isMethodReference(
-            expression.expression,
-            this.generator.checker
-        );
-        const declaration = this.generator.checker.getSymbolAtLocation(
-            expression.expression
-        )!.valueDeclaration;
-        let thisType: ts.Type | undefined;
-        if (isMethod) {
-            const methodReference =
-                expression.expression as ts.PropertyAccessExpression;
-            thisType = this.generator.checker.getTypeAtLocation(
-                methodReference.expression
-            );
-        }
-
-        const argumentTypes = expression.arguments.map(
-            this.generator.checker.getTypeAtLocation
-        );
-        const callee = this.getOrEmitFunctionForCall(
-            declaration as ts.FunctionLikeDeclaration,
-            thisType,
-            argumentTypes
-        );
-
-        const args = expression.arguments.map((argument) =>
-            this.emitExpression(argument)
-        );
-
-        if (isMethod) {
-            const propertyAccess =
-                expression.expression as ts.PropertyAccessExpression;
-            args.unshift(this.emitExpression(propertyAccess.expression));
-        }
-
-        return this.generator.builder.createCall(callee, args);
-    }
-
-    getOrEmitFunctionForCall(
-        declaration: ts.Declaration,
-        thisType: ts.Type | undefined,
-        argumentTypes: ts.Type[]
-    ) {
-        if (
-            !ts.isFunctionDeclaration(declaration) &&
-            !ts.isMethodDeclaration(declaration) &&
-            !ts.isMethodSignature(declaration) &&
-            !ts.isIndexSignatureDeclaration(declaration) &&
-            !ts.isPropertyDeclaration(declaration) &&
-            !ts.isConstructorDeclaration(declaration)
-        ) {
-            throw Error(
-                `Invalid function call target '${getDeclarationBaseName(
-                    declaration
-                )}' (${ts.SyntaxKind[declaration.kind]})`
-            );
-        }
-
-        return keepInsertionPoint(this.generator.builder, () => {
-            return this.emitFunctionDeclaration(
-                declaration as ts.FunctionLikeDeclaration,
-                thisType,
-                argumentTypes
-            )!;
-        });
-    }
-
     /// STATEMENTS ///
     emitBlock(block: ts.Block): void {
-        this.generator.enviroment.withScope(undefined, scope => {
-          for (const statement of block.statements) {
-            this.emitNode(statement, scope);
-          }
-        });
-    }
-
-    emitVariableStatement(
-        statement: ts.VariableStatement,
-        parentScope: Scope
-      ): void {
-        for (const declaration of statement.declarationList.declarations) {
-          // TODO: Handle destructuring declarations.
-          const name = declaration.name.getText();
-          const initializer = this.emitExpression(declaration.initializer!);
-      
-          if (isVarConst(declaration)) {
-            if (!(initializer instanceof llvm.Argument)) {
-              initializer.name = name;
+        this.generator.enviroment.withScope(undefined, (scope) => {
+            for (const statement of block.statements) {
+                this.emitNode(statement, scope);
             }
-            parentScope.set(name, initializer);
-          } else {
-            const type = this.generator.checker.getTypeAtLocation(declaration);
-
-            // @ts-ignore
-            const builder = new llvm.IRBuilder(this.generator.builder.getInsertBlock().parent!.getEntryBlock()!);
-            const arraySize = undefined;
-            const alloca = builder.createAlloca(getLLVMType(type, this.generator), arraySize, name);
-
-            this.generator.builder.createStore(initializer, alloca as llvm.Value, undefined);
-            parentScope.set(name, alloca);
-          }
-        }
+        });
     }
 }
 
