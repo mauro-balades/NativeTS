@@ -1,9 +1,6 @@
 {
-    "extends": [
-      "tslint-etc"
-    ],
+    "extends": ["tslint-etc"],
     "rules": {
-      "no-unused-declaration": true
+        "no-unused-declaration": true
     }
-  }
-  
+}

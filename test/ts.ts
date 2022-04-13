@@ -1,6 +1,6 @@
 function hello() {}
 
-("awd");
+("2");
 hello();
 
 console.log("d");

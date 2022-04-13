@@ -27,26 +27,26 @@ import * as R from "ramda";
 
 import { LLVMGenerator } from "./generator";
 import { Scope } from "./enviroment/scopes";
-import { getStringType, getStructType } from "./types";
-import {
-    mangleType,
-} from "./mangle";
-import { addTypeArguments } from "./tsc-utils";
+import { getStringType } from "./types";
 import VariableStatement from "./emitters/variable-statement";
 import EmitterGenerator from "./emitters/gen/generation";
 import FunctionDeclaration from "./emitters/function-declaration";
+import ClassDeclaration from "./emitters/class-declaration";
 
 class Emitter {
     readonly generator: LLVMGenerator;
     readonly gen: EmitterGenerator;
 
-    readonly variableStatement: VariableStatement;
-    readonly functionDeclaration: FunctionDeclaration;
+    readonly classDeclaration    : ClassDeclaration;
+    readonly variableStatement   : VariableStatement;
+    readonly functionDeclaration : FunctionDeclaration;
 
+    // prettier-ignore
     constructor(generator: LLVMGenerator) {
         this.generator = generator;
 
-        this.variableStatement = new VariableStatement(this);
+        this.classDeclaration    = new ClassDeclaration(this);
+        this.variableStatement   = new VariableStatement(this);
         this.functionDeclaration = new FunctionDeclaration(this);
 
         this.gen = new EmitterGenerator(this);
@@ -95,7 +95,7 @@ class Emitter {
                 );
                 break;
             case ts.SyntaxKind.ClassDeclaration:
-                this.emitClassDeclaration(
+                this.classDeclaration.run(
                     node as ts.ClassDeclaration,
                     [],
                     scope
@@ -137,41 +137,6 @@ class Emitter {
                     type: getStringType(this.generator.context),
                 })
             );
-        }
-    }
-
-    emitClassDeclaration(
-        declaration: ts.ClassDeclaration,
-        typeArguments: ReadonlyArray<ts.Type>,
-        parentScope: Scope
-    ): void {
-        if (declaration.typeParameters && typeArguments.length === 0) {
-            return;
-        }
-
-        const thisType = addTypeArguments(
-            this.generator.checker.getTypeAtLocation(declaration),
-            typeArguments
-        );
-
-        const preExisting = this.generator.module.getTypeByName(
-            mangleType(thisType, this.generator.checker)
-        );
-        if (preExisting) {
-            return;
-        }
-
-        const isOpaque = !!(
-            ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.Ambient
-        );
-        const name = mangleType(thisType, this.generator.checker);
-        const type = getStructType(thisType, isOpaque, this.generator);
-        const scope = new Scope(name, { declaration, type });
-        parentScope.set(name, scope);
-        for (const method of declaration.members.filter(
-            (member) => !ts.isPropertyDeclaration(member)
-        )) {
-            this.emitNode(method, scope);
         }
     }
 
