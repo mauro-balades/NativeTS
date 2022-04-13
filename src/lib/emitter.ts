@@ -110,7 +110,7 @@ class Emitter {
                 this.emitBlock(node as ts.Block);
                 break;
             case ts.SyntaxKind.ModuleDeclaration:
-                this.emitModuleDeclaration(node as ts.ModuleDeclaration, scope);
+                this.moduleDeclaration.run(node as ts.ModuleDeclaration, scope);
                 break;
             case ts.SyntaxKind.VariableStatement:
                 this.variableStatement.run(node as ts.VariableStatement, scope);
