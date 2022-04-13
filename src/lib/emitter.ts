@@ -28,10 +28,13 @@ import * as R from "ramda";
 import { LLVMGenerator } from "./generator";
 import { Scope } from "./enviroment/scopes";
 import { getStringType } from "./types";
-import VariableStatement from "./emitters/variable-statement";
+
 import EmitterGenerator from "./emitters/gen/generation";
+import VariableStatement from "./emitters/variable-statement";
+
 import FunctionDeclaration from "./emitters/function-declaration";
 import ClassDeclaration from "./emitters/class-declaration";
+import ModuleDeclaration from "./emitters/module-declaration";
 
 class Emitter {
     readonly generator: LLVMGenerator;
@@ -39,6 +42,7 @@ class Emitter {
 
     readonly classDeclaration    : ClassDeclaration;
     readonly variableStatement   : VariableStatement;
+    readonly moduleDeclaration   : ModuleDeclaration;
     readonly functionDeclaration : FunctionDeclaration;
 
     // prettier-ignore
@@ -46,6 +50,7 @@ class Emitter {
         this.generator = generator;
 
         this.classDeclaration    = new ClassDeclaration(this);
+        this.moduleDeclaration   = new ModuleDeclaration(this);
         this.variableStatement   = new VariableStatement(this);
         this.functionDeclaration = new FunctionDeclaration(this);
 
@@ -138,16 +143,6 @@ class Emitter {
                 })
             );
         }
-    }
-
-    emitModuleDeclaration(
-        declaration: ts.ModuleDeclaration,
-        parentScope: Scope
-    ): void {
-        const name = declaration.name.text;
-        const scope = new Scope(name);
-        declaration.body!.forEachChild((node) => this.emitNode(node, scope));
-        parentScope.set(name, scope);
     }
 
     /// STATEMENTS ///
