@@ -23,22 +23,22 @@ This program converts typescript code into native binary code or into llvm code.
 ### Example
 
 typescript code:
-```ts
 
+```ts
 class Hello {
     constructor() {}
 
     sayHi() {
-        console.log("Hi!")
+        console.log("Hi!");
     }
 }
 
-var hello = new Hello()
-hello.sayHi()
-
+var hello = new Hello();
+hello.sayHi();
 ```
 
 llvm IR:
+
 ```llvm
 ; ModuleID = 'main'
 source_filename = "main"

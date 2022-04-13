@@ -22,14 +22,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-
 import ts = require("typescript");
 import Emitter from "../emitter";
 import { Scope } from "../enviroment/scopes";
 import { LLVMGenerator } from "../generator";
-import {
-    mangleType,
-} from "../mangle";
+import { mangleType } from "../mangle";
 import { addTypeArguments } from "../tsc-utils";
 import { getStructType } from "../types";
 import EmitterTemplate from "./template";

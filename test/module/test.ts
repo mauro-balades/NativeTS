@@ -1,2 +1,1 @@
-
-export default 'hello from export';
+export default "hello from export";

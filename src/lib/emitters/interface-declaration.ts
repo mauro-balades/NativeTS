@@ -22,13 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
+
 import ts = require("typescript");
 import Emitter from "../emitter";
 import { Scope } from "../enviroment/scopes";
 import { LLVMGenerator } from "../generator";
+import { getStringType } from "../types";
 import EmitterTemplate from "./template";
 
-class ModuleDeclaration extends EmitterTemplate {
+class InterfaceDeclaration extends EmitterTemplate {
     readonly generator: LLVMGenerator;
     readonly emitter: Emitter;
 
@@ -39,16 +41,22 @@ class ModuleDeclaration extends EmitterTemplate {
     }
 
     public override run(
-        declaration: ts.ModuleDeclaration,
+        declaration: ts.InterfaceDeclaration,
         parentScope: Scope
     ): void {
         const name = declaration.name.text;
-        const scope = new Scope(name);
-        declaration.body!.forEachChild((node) =>
-            this.emitter.emitNode(node, scope)
-        );
-        parentScope.set(name, scope);
+        parentScope.set(name, new Scope(name));
+
+        if (name === "String") {
+            parentScope.set(
+                "string",
+                new Scope(name, {
+                    declaration,
+                    type: getStringType(this.generator.context),
+                })
+            );
+        }
     }
 }
 
-export default ModuleDeclaration;
+export default InterfaceDeclaration;

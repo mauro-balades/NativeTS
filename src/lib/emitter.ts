@@ -27,36 +27,38 @@ import * as R from "ramda";
 
 import { LLVMGenerator } from "./generator";
 import { Scope } from "./enviroment/scopes";
-import { getStringType } from "./types";
 
 import EmitterGenerator from "./emitters/gen/generation";
 
 import BlockStatement from "./emitters/block-statement";
 import VariableStatement from "./emitters/variable-statement";
 
-import FunctionDeclaration from "./emitters/function-declaration";
 import ClassDeclaration from "./emitters/class-declaration";
 import ModuleDeclaration from "./emitters/module-declaration";
+import FunctionDeclaration from "./emitters/function-declaration";
+import InterfaceDeclaration from "./emitters/interface-declaration";
 
 class Emitter {
     readonly generator: LLVMGenerator;
     readonly gen: EmitterGenerator;
 
-    readonly blockStatement      : BlockStatement;
-    readonly classDeclaration    : ClassDeclaration;
-    readonly variableStatement   : VariableStatement;
-    readonly moduleDeclaration   : ModuleDeclaration;
-    readonly functionDeclaration : FunctionDeclaration;
+    readonly blockStatement: BlockStatement;
+    readonly classDeclaration: ClassDeclaration;
+    readonly variableStatement: VariableStatement;
+    readonly moduleDeclaration: ModuleDeclaration;
+    readonly functionDeclaration: FunctionDeclaration;
+    readonly interfaceDeclaration: InterfaceDeclaration;
 
     // prettier-ignore
     constructor(generator: LLVMGenerator) {
         this.generator = generator;
 
-        this.blockStatement      = new BlockStatement(this);
-        this.classDeclaration    = new ClassDeclaration(this);
-        this.moduleDeclaration   = new ModuleDeclaration(this);
-        this.variableStatement   = new VariableStatement(this);
-        this.functionDeclaration = new FunctionDeclaration(this);
+        this.blockStatement         = new BlockStatement(this);
+        this.classDeclaration       = new ClassDeclaration(this);
+        this.moduleDeclaration      = new ModuleDeclaration(this);
+        this.variableStatement      = new VariableStatement(this);
+        this.functionDeclaration    = new FunctionDeclaration(this);
+        this.interfaceDeclaration   = new InterfaceDeclaration(this);
 
         this.gen = new EmitterGenerator(this);
     }
@@ -127,25 +129,6 @@ class Emitter {
                         ts.SyntaxKind[node.kind]
                     }': ${node.getText()}`
                 );
-        }
-    }
-
-    /// DECLARATIONS ///
-    visitInterfaceDeclaration(
-        declaration: ts.InterfaceDeclaration,
-        parentScope: Scope
-    ) {
-        const name = declaration.name.text;
-        parentScope.set(name, new Scope(name));
-
-        if (name === "String") {
-            parentScope.set(
-                "string",
-                new Scope(name, {
-                    declaration,
-                    type: getStringType(this.generator.context),
-                })
-            );
         }
     }
 

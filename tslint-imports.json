@@ -2,5 +2,10 @@
     "extends": ["tslint-etc"],
     "rules": {
         "no-unused-declaration": true
+    },
+    "linterOptions": {
+        "exclude": [
+            "test/*"
+        ]
     }
 }

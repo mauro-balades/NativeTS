@@ -22,16 +22,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-
 import ts = require("typescript");
 import Emitter from "../emitter";
-import { Scope } from "../enviroment/scopes";
 import { LLVMGenerator } from "../generator";
-import {
-    mangleType,
-} from "../mangle";
-import { addTypeArguments } from "../tsc-utils";
-import { getStructType } from "../types";
 import EmitterTemplate from "./template";
 
 class BlockStatement extends EmitterTemplate {
@@ -45,9 +38,7 @@ class BlockStatement extends EmitterTemplate {
     }
 
     // @ts-ignore
-    public override run(
-        block: ts.Block
-    ): void {
+    public override run(block: ts.Block): void {
         this.generator.enviroment.withScope(undefined, (scope) => {
             for (const statement of block.statements) {
                 this.emitter.emitNode(statement, scope);

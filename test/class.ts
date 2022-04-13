@@ -1,11 +1,10 @@
-
 class Hello {
     constructor() {}
 
     sayHi() {
-        console.log("Hi!")
+        console.log("Hi!");
     }
 }
 
-var hello = new Hello()
-hello.sayHi()
+var hello = new Hello();
+hello.sayHi();
