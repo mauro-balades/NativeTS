@@ -33,7 +33,6 @@ import {
     mangleFunctionDeclaration,
     mangleType,
 } from "../mangle";
-import { isVarConst } from "../tsc-utils";
 import { getLLVMType } from "../types";
 import { createGCAllocate, isValueType, newLLVMFunction } from "../utils";
 import EmitterTemplate from "./template";

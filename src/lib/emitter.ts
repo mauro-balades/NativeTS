@@ -23,26 +23,15 @@ SOFTWARE.
 */
 
 import * as ts from "typescript";
-import * as llvm from "llvm-node";
 import * as R from "ramda";
 
 import { LLVMGenerator } from "./generator";
 import { Scope } from "./enviroment/scopes";
+import { getStringType, getStructType } from "./types";
 import {
-    createGCAllocate,
-    getBuiltin,
-    isLLVMString,
-    isValueType,
-    keepInsertionPoint,
-    newLLVMFunction,
-} from "./utils";
-import { getLLVMType, getStringType, getStructType } from "./types";
-import {
-    getDeclarationBaseName,
-    mangleFunctionDeclaration,
     mangleType,
 } from "./mangle";
-import { addTypeArguments, isMethodReference, isVarConst } from "./tsc-utils";
+import { addTypeArguments } from "./tsc-utils";
 import VariableStatement from "./emitters/variable-statement";
 import EmitterGenerator from "./emitters/gen/generation";
 import FunctionDeclaration from "./emitters/function-declaration";

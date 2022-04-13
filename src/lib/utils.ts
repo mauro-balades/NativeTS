@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-import { privateEncrypt } from "crypto";
+
 import * as llvm from "llvm-node";
 import * as ts from "typescript";
 import { LLVMGenerator } from "./generator";
